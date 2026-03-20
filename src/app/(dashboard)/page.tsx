@@ -1,239 +1,168 @@
-import Link from "next/link";
+'use client';
 
-/* ─── Stat Cards Data ─── */
-const stats = [
-  {
-    label: "Total Buses",
-    value: "12",
-    href: "/buses",
-    iconBg: "bg-primary/10",
-    iconColor: "text-primary",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="3" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="1.5" />
-        <circle cx="7.5" cy="19" r="1.5" stroke="currentColor" strokeWidth="1.5" />
-        <circle cx="16.5" cy="19" r="1.5" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-    ),
-  },
-  {
-    label: "Staff Present",
-    value: "25/28",
-    href: "/staff",
-    iconBg: "bg-success/10",
-    iconColor: "text-success",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M5 20c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: "Expenses Mar",
-    value: "\u20B91.48L",
-    href: "/expenses",
-    iconBg: "bg-accent/10",
-    iconColor: "text-accent",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" strokeWidth="1.5" />
-        <circle cx="16" cy="15" r="1.5" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-    ),
-  },
+import { useRouter } from 'next/navigation';
+
+/* ─── Alert Data ─── */
+const alerts = [
+  { id: 1, text: 'GJ-01-TX-5502 — PUC expired 2 days ago', meta: 'Bus #3 · Due: 10 Mar 2026', dot: 'red' },
+  { id: 2, text: 'Ramesh Solanki — License expires in 5 days', meta: 'Driver · Exp: 17 Mar 2026', dot: 'red' },
+  { id: 3, text: 'GJ-01-TX-5507 — Service due in 800 km', meta: 'Bus #6 · Next service: 45,000 km', dot: 'amber' },
+  { id: 4, text: 'GJ-01-TX-5504 — Insurance renewal in 15 days', meta: 'Bus #4 · Exp: 27 Mar 2026', dot: 'amber' },
+  { id: 5, text: 'GJ-01-TX-5501 — Passing due in 30 days', meta: 'Bus #1 · Due: 11 Apr 2026', dot: 'blue' },
 ];
 
-/* ─── Quick Actions ─── */
-const quickActions = [
-  {
-    label: "Add Bus",
-    href: "/buses",
-    iconBg: "bg-primary/10",
-    iconColor: "text-primary",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="3" y="3" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <line x1="10" y1="6" x2="10" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="7.5" y1="8.5" x2="12.5" y2="8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: "Add Staff",
-    href: "/staff",
-    iconBg: "bg-success/10",
-    iconColor: "text-success",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="8" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M3 17c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="15" y1="7" x2="15" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="12" y1="10" x2="18" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: "Add Expense",
-    href: "/expenses",
-    iconBg: "bg-accent/10",
-    iconColor: "text-accent",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <line x1="10" y1="7" x2="10" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="7" y1="10" x2="13" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: "Mark Attendance",
-    href: "/attendance",
-    iconBg: "bg-info/10",
-    iconColor: "text-info",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-];
-
-/* ─── Recent Expenses ─── */
+/* ─── Recent Expenses Data ─── */
 const recentExpenses = [
-  { id: 1, description: "Diesel — Bus GJ01AB1234", amount: "\u20B94,200", date: "19 Mar", category: "Fuel" },
-  { id: 2, description: "Tyre replacement — Bus GJ01CD5678", amount: "\u20B912,500", date: "18 Mar", category: "Maintenance" },
-  { id: 3, description: "Driver salary — Ramesh K.", amount: "\u20B918,000", date: "15 Mar", category: "Salary" },
-  { id: 4, description: "Insurance renewal — Bus GJ01EF9012", amount: "\u20B98,400", date: "14 Mar", category: "Insurance" },
-  { id: 5, description: "Diesel — Bus GJ01GH3456", amount: "\u20B93,800", date: "13 Mar", category: "Fuel" },
-];
-
-/* ─── Document Expiry Alerts ─── */
-const expiryAlerts = [
-  { id: 1, document: "PUC Certificate", bus: "GJ01AB1234", daysLeft: 3, severity: "error" as const },
-  { id: 2, document: "Fitness Certificate", bus: "GJ01CD5678", daysLeft: 12, severity: "warning" as const },
-  { id: 3, document: "Road Tax", bus: "GJ01EF9012", daysLeft: 25, severity: "warning" as const },
-  { id: 4, document: "Insurance", bus: "GJ01GH3456", daysLeft: 45, severity: "success" as const },
+  { id: 1, label: 'Diesel — GJ-01-TX-5501', sub: '12 Mar 2026 · HP Petrol Pump', amt: '\u20B94,200' },
+  { id: 2, label: 'Tyre Replacement — GJ-01-TX-5503', sub: '10 Mar 2026 · Sharma Tyres', amt: '\u20B912,500' },
+  { id: 3, label: 'Engine Oil — GJ-01-TX-5506', sub: '9 Mar 2026 · HP Petrol Pump', amt: '\u20B93,800' },
+  { id: 4, label: 'Washing — GJ-01-TX-5502', sub: '8 Mar 2026 · In-house', amt: '\u20B9600' },
+  { id: 5, label: 'Diesel — GJ-01-TX-5505', sub: '7 Mar 2026 · Indian Oil', amt: '\u20B93,950' },
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   return (
-    <div className="space-y-6">
-      {/* Attendance Alert Banner */}
-      <div className="alert-banner alert-banner-error">
-        <div className="flex items-center gap-3">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="flex-shrink-0">
-            <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" />
-            <line x1="10" y1="6" x2="10" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <circle cx="10" cy="14" r="0.75" fill="currentColor" />
-          </svg>
-          <span className="text-sm font-medium">
-            Today&apos;s attendance is not marked yet
-          </span>
-        </div>
-        <Link
-          href="/attendance"
-          className="px-4 py-1.5 bg-error text-white rounded-md text-sm font-medium hover:bg-error/90 transition-colors whitespace-nowrap"
+    <>
+      {/* Stat Cards */}
+      <div className="stat-grid">
+        <div
+          className="stat-card bg-primary"
+          onClick={() => router.push('/buses')}
+          style={{ cursor: 'pointer' }}
         >
-          Mark Now
-        </Link>
+          <div className="stat-icon">&#128652;</div>
+          <div className="stat-value">12</div>
+          <div className="stat-label">Total Buses</div>
+        </div>
+        <div
+          className="stat-card bg-success"
+          onClick={() => router.push('/attendance')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="stat-icon">&#128100;</div>
+          <div className="stat-value">25/28</div>
+          <div className="stat-label">Staff Present Today</div>
+        </div>
+        <div
+          className="stat-card bg-accent"
+          onClick={() => router.push('/expenses')}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="stat-icon">&#8377;</div>
+          <div className="stat-value">&#8377;1.48L</div>
+          <div className="stat-label">Expenses (Mar)</div>
+        </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {stats.map((stat) => (
-          <Link key={stat.href} href={stat.href} className="stat-card">
-            <div className={`stat-card-icon ${stat.iconBg} ${stat.iconColor}`}>
-              {stat.icon}
+      {/* Attendance Alert Banner */}
+      <div
+        style={{
+          background: 'color-mix(in srgb, #FF6692 8%, #fff)',
+          border: '1px solid color-mix(in srgb, #FF6692 20%, #fff)',
+          borderRadius: 'var(--radius)',
+          padding: '12px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              background: 'color-mix(in srgb, #FF6692 15%, #fff)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              flexShrink: 0,
+            }}
+          >
+            &#9888;
+          </div>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dark)' }}>
+              Today&apos;s attendance is not marked yet
             </div>
-            <div>
-              <p className="text-sm text-bodytext font-medium">{stat.label}</p>
-              <p className="text-2xl font-bold text-dark mt-0.5">{stat.value}</p>
+            <div style={{ fontSize: '12px', color: 'var(--bodytext)', marginTop: '2px' }}>
+              19 Mar 2026 &middot; 28 staff members pending
             </div>
-          </Link>
-        ))}
+          </div>
+        </div>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => router.push('/attendance')}
+          style={{ flexShrink: 0 }}
+        >
+          Mark Now
+        </button>
       </div>
 
       {/* Quick Actions */}
-      <div>
-        <h2 className="text-sm font-semibold text-bodytext uppercase tracking-wider mb-3">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {quickActions.map((action) => (
-            <Link key={action.label} href={action.href} className="quick-action-btn">
-              <div className={`quick-action-btn-icon ${action.iconBg} ${action.iconColor}`}>
-                {action.icon}
-              </div>
-              <span>{action.label}</span>
-            </Link>
-          ))}
-        </div>
+      <div className="quick-actions">
+        <button className="btn btn-primary" onClick={() => router.push('/buses')}>
+          &#128652; Add Bus
+        </button>
+        <button className="btn btn-primary" onClick={() => router.push('/staff')}>
+          &#128100; Add Staff
+        </button>
+        <button className="btn btn-primary" onClick={() => router.push('/expenses')}>
+          &#8377; Add Expense
+        </button>
+        <button className="btn btn-primary" onClick={() => router.push('/attendance')}>
+          &#9745; Mark Attendance
+        </button>
       </div>
 
-      {/* Two-column layout: Recent Expenses + Document Expiry */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Two Column: Alerts + Expenses */}
+      <div className="two-col">
+        {/* Active Alerts */}
+        <div className="card">
+          <div className="card-header">
+            <h3>&#9888; Active Alerts</h3>
+            <span className="badge badge-error">5</span>
+          </div>
+          <div className="card-body">
+            {alerts.map((alert) => (
+              <div className="alert-item" key={alert.id}>
+                <div className={`alert-dot ${alert.dot}`}></div>
+                <div>
+                  <div className="alert-text">{alert.text}</div>
+                  <div className="alert-meta">{alert.meta}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Recent Expenses */}
         <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold text-dark">Recent Expenses</h3>
-            <Link href="/expenses" className="text-sm text-primary font-medium hover:underline">
-              View All
-            </Link>
+          <div className="card-header">
+            <h3>&#8377; Recent Expenses</h3>
+            <a onClick={() => router.push('/expenses')} style={{ fontSize: '13px', cursor: 'pointer' }}>
+              View All &rarr;
+            </a>
           </div>
-          <div>
-            {recentExpenses.map((expense) => (
-              <div key={expense.id} className="list-item">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-dark truncate">
-                    {expense.description}
-                  </p>
-                  <p className="text-xs text-bodytext mt-0.5">
-                    {expense.category} &middot; {expense.date}
-                  </p>
+          <div className="card-body">
+            {recentExpenses.map((exp) => (
+              <div className="exp-item" key={exp.id}>
+                <div>
+                  <div className="exp-label">{exp.label}</div>
+                  <div className="exp-sub">{exp.sub}</div>
                 </div>
-                <span className="text-sm font-semibold text-dark whitespace-nowrap">
-                  {expense.amount}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Document Expiry Alerts */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold text-dark">Document Expiry Alerts</h3>
-            <Link href="/document-expiry" className="text-sm text-primary font-medium hover:underline">
-              View All
-            </Link>
-          </div>
-          <div>
-            {expiryAlerts.map((alert) => (
-              <div key={alert.id} className="list-item">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-dark">{alert.document}</p>
-                  <p className="text-xs text-bodytext mt-0.5">Bus {alert.bus}</p>
+                <div className="exp-amt" style={{ color: 'var(--error)' }}>
+                  {exp.amt}
                 </div>
-                <span
-                  className={`badge ${
-                    alert.severity === "error"
-                      ? "badge-error"
-                      : alert.severity === "warning"
-                      ? "badge-warning"
-                      : "badge-success"
-                  }`}
-                >
-                  {alert.daysLeft}d left
-                </span>
               </div>
             ))}
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

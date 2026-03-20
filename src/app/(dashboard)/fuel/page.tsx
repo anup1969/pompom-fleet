@@ -1,170 +1,148 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useState } from 'react';
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-type PeriodFilter = 'Today' | 'This Week' | 'This Month' | 'All'
-
+/* ──────────────── Demo Data ──────────────── */
 interface FuelEntry {
-  id: string
-  date: string
-  bus: string
-  litres: number
-  rate: number
-  amount: number
-  odometer: number
-  station: string
+  id: number;
+  date: string;
+  dateISO: string;
+  bus: string;
+  station: string;
+  litres: number;
+  rate: string;
+  amount: string;
+  odo: string;
+  mileage: string;
+  mileageColor: string;
+  remarks: string;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Demo data                                                          */
-/* ------------------------------------------------------------------ */
+const DEMO_FUEL: FuelEntry[] = [
+  { id: 1, date: '12 Mar 2026', dateISO: '2026-03-12', bus: 'GJ-01-TX-5501', station: 'HP Isanpur, Ahmedabad', litres: 65, rate: '\u20B989.5', amount: '\u20B95,818', odo: '38,520 km', mileage: '4.6 km/L', mileageColor: 'var(--success)', remarks: 'Full tank' },
+  { id: 2, date: '11 Mar 2026', dateISO: '2026-03-11', bus: 'GJ-01-TX-5503', station: 'Indian Oil Narol, Ahmedabad', litres: 70, rate: '\u20B988.2', amount: '\u20B96,174', odo: '56,100 km', mileage: '4.3 km/L', mileageColor: 'var(--success)', remarks: '\u2014' },
+  { id: 3, date: '9 Mar 2026', dateISO: '2026-03-09', bus: 'GJ-01-TX-5507', station: 'Reliance Bopal, Ahmedabad', litres: 55, rate: '\u20B987.9', amount: '\u20B94,835', odo: '44,480 km', mileage: '3.8 km/L', mileageColor: 'var(--warning)', remarks: 'City traffic heavy' },
+  { id: 4, date: '7 Mar 2026', dateISO: '2026-03-07', bus: 'GJ-01-TX-5502', station: 'HP Satellite, Ahmedabad', litres: 60, rate: '\u20B989.5', amount: '\u20B95,370', odo: '42,400 km', mileage: '3.2 km/L', mileageColor: 'var(--error)', remarks: 'Engine check needed' },
+  { id: 5, date: '5 Mar 2026', dateISO: '2026-03-05', bus: 'GJ-01-TX-5505', station: 'Essar Chandkheda, Ahmedabad', litres: 72, rate: '\u20B986.8', amount: '\u20B96,250', odo: '61,550 km', mileage: '4.5 km/L', mileageColor: 'var(--success)', remarks: 'Full tank, highway run' },
+];
 
-const FUEL_LOG: FuelEntry[] = [
-  { id: '1', date: '2026-03-20', bus: 'GJ-05-AB-1234', litres: 65, rate: 96.5, amount: 6272.5, odometer: 142350, station: 'HP Petrol Pump, Ring Road' },
-  { id: '2', date: '2026-03-19', bus: 'GJ-05-CD-5678', litres: 52, rate: 96.5, amount: 5018.0, odometer: 98720, station: 'Indian Oil, MG Road' },
-  { id: '3', date: '2026-03-18', bus: 'GJ-05-EF-9012', litres: 70, rate: 96.8, amount: 6776.0, odometer: 113480, station: 'Bharat Petroleum, SG Highway' },
-  { id: '4', date: '2026-03-17', bus: 'GJ-05-AB-1234', litres: 60, rate: 96.5, amount: 5790.0, odometer: 141800, station: 'HP Petrol Pump, Ring Road' },
-  { id: '5', date: '2026-03-15', bus: 'GJ-05-GH-3456', litres: 55, rate: 96.8, amount: 5324.0, odometer: 87650, station: 'Indian Oil, Satellite' },
-  { id: '6', date: '2026-03-14', bus: 'GJ-05-CD-5678', litres: 48, rate: 96.5, amount: 4632.0, odometer: 98200, station: 'HP Petrol Pump, Navrangpura' },
-  { id: '7', date: '2026-03-12', bus: 'GJ-05-EF-9012', litres: 68, rate: 96.5, amount: 6562.0, odometer: 112900, station: 'Bharat Petroleum, SG Highway' },
-  { id: '8', date: '2026-03-10', bus: 'GJ-05-AB-1234', litres: 62, rate: 96.2, amount: 5964.4, odometer: 141250, station: 'Indian Oil, MG Road' },
-]
-
-const TOTAL_LITRES = FUEL_LOG.reduce((s, e) => s + e.litres, 0)
-const TOTAL_COST = FUEL_LOG.reduce((s, e) => s + e.amount, 0)
-const AVG_MILEAGE = 4.2 // km/l — static demo value
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-function formatCurrency(n: number): string {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+const BUSES = ['GJ-01-TX-5501', 'GJ-01-TX-5502', 'GJ-01-TX-5503', 'GJ-01-TX-5504', 'GJ-01-TX-5505', 'GJ-01-TX-5507'];
 
 export default function FuelPage() {
-  const [period, setPeriod] = useState<PeriodFilter>('This Month')
+  const [periodFilter, setPeriodFilter] = useState('all');
+  const [busFilter, setBusFilter] = useState('');
+
+  const periodTabs = [
+    { key: 'all', label: 'All' },
+    { key: 'today', label: 'Today' },
+    { key: 'week', label: 'This Week' },
+    { key: 'month', label: 'This Month' },
+  ];
+
+  const filtered = DEMO_FUEL.filter((f) => {
+    if (busFilter && f.bus !== busFilter) return false;
+    return true;
+  });
 
   return (
-    <div className="min-h-screen" style={{ background: '#F4F7FB' }}>
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-
-        {/* Header */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold" style={{ color: '#1F2A3D' }}>Fuel Log</h1>
-          <button
-            className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: '#635BFF' }}
+    <div className="card">
+      <div className="card-header">
+        <h3>Fuel Log</h3>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <select
+            className="form-select"
+            style={{ width: 180, height: 38 }}
+            value={busFilter}
+            onChange={(e) => setBusFilter(e.target.value)}
           >
-            + Add Fuel Entry
-          </button>
+            <option value="">All Buses</option>
+            {BUSES.map((b) => (
+              <option key={b}>{b}</option>
+            ))}
+          </select>
+          <button className="btn btn-outline btn-sm">{'\uD83D\uDCE5'} Export</button>
+          <button className="btn btn-primary btn-sm">+ Add Fuel Entry</button>
         </div>
-
-        {/* Period filter */}
-        <div className="mb-6 flex gap-1 self-start rounded-lg p-1" style={{ background: '#e5e5e5' }}>
-          {(['Today', 'This Week', 'This Month', 'All'] as PeriodFilter[]).map((p) => (
+      </div>
+      <div className="card-body">
+        {/* Tab Pill Filters */}
+        <div className="tab-pills">
+          {periodTabs.map((t) => (
             <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className="rounded-md px-4 py-2 text-sm font-medium transition-all"
-              style={{
-                background: period === p ? '#fff' : 'transparent',
-                color: period === p ? '#635BFF' : '#98A4AE',
-                boxShadow: period === p ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
-              }}
+              key={t.key}
+              className={`tab-pill${periodFilter === t.key ? ' active' : ''}`}
+              onClick={() => setPeriodFilter(t.key)}
             >
-              {p}
+              {t.label}
             </button>
           ))}
         </div>
 
-        {/* Summary cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          {/* Total Litres */}
-          <div className="rounded-xl bg-white p-5 shadow-sm" style={{ border: '1px solid #e5e5e5' }}>
-            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: '#98A4AE' }}>Total Litres</p>
-            <p className="mt-2 text-3xl font-bold" style={{ color: '#635BFF' }}>
-              {TOTAL_LITRES.toLocaleString('en-IN')}
-              <span className="ml-1 text-sm font-normal" style={{ color: '#98A4AE' }}>L</span>
-            </p>
+        {/* Summary Boxes */}
+        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+          <div className="stat-card bg-primary">
+            <div className="stat-icon">{'\u26FD'}</div>
+            <div className="stat-value">2,450 L</div>
+            <div className="stat-label">Total Fuel</div>
           </div>
-
-          {/* Total Cost */}
-          <div className="rounded-xl bg-white p-5 shadow-sm" style={{ border: '1px solid #e5e5e5' }}>
-            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: '#98A4AE' }}>Total Cost</p>
-            <p className="mt-2 text-3xl font-bold" style={{ color: '#2EA95C' }}>
-              {formatCurrency(TOTAL_COST)}
-            </p>
+          <div className="stat-card bg-error">
+            <div className="stat-icon">{'\u20B9'}</div>
+            <div className="stat-value">{'\u20B9'}2,15,600</div>
+            <div className="stat-label">Total Cost</div>
           </div>
-
-          {/* Avg Mileage */}
-          <div className="rounded-xl bg-white p-5 shadow-sm" style={{ border: '1px solid #e5e5e5' }}>
-            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: '#98A4AE' }}>Avg Mileage</p>
-            <p className="mt-2 text-3xl font-bold" style={{ color: '#F59E0B' }}>
-              {AVG_MILEAGE}
-              <span className="ml-1 text-sm font-normal" style={{ color: '#98A4AE' }}>km/l</span>
-            </p>
+          <div className="stat-card bg-success">
+            <div className="stat-icon">{'\uD83D\uDE97'}</div>
+            <div className="stat-value">4.2 km/L</div>
+            <div className="stat-label">Avg Mileage</div>
+          </div>
+          <div className="stat-card bg-accent">
+            <div className="stat-icon">{'\uD83D\uDCC8'}</div>
+            <div className="stat-value">{'\u20B9'}88.0/L</div>
+            <div className="stat-label">Avg Rate</div>
           </div>
         </div>
 
-        {/* Fuel log table */}
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm" style={{ border: '1px solid #e5e5e5' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: '#F4F7FB' }}>
-                  <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: '#98A4AE' }}>Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: '#98A4AE' }}>Bus</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold" style={{ color: '#98A4AE' }}>Litres</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold" style={{ color: '#98A4AE' }}>Rate/L</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold" style={{ color: '#98A4AE' }}>Amount</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold" style={{ color: '#98A4AE' }}>Odometer</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: '#98A4AE' }}>Station</th>
+        {/* Fuel Table */}
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Bus No</th>
+                <th>Fuel Station</th>
+                <th>Litres</th>
+                <th>Rate/L</th>
+                <th>Amount ({'\u20B9'})</th>
+                <th>Odo Reading</th>
+                <th>Mileage (km/L)</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((f) => (
+                <tr key={f.id}>
+                  <td>{f.date}</td>
+                  <td>
+                    <a className="clickable-link">{f.bus}</a>
+                  </td>
+                  <td>{f.station}</td>
+                  <td>{f.litres}</td>
+                  <td>{f.rate}</td>
+                  <td style={{ fontWeight: 600 }}>{f.amount}</td>
+                  <td>{f.odo}</td>
+                  <td>
+                    <span style={{ color: f.mileageColor, fontWeight: 600 }}>{f.mileage}</span>
+                  </td>
+                  <td>{f.remarks}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {FUEL_LOG.map((entry) => (
-                  <tr key={entry.id} className="border-t transition-colors hover:bg-gray-50/60" style={{ borderColor: '#f0f0f0' }}>
-                    <td className="whitespace-nowrap px-4 py-3 font-medium" style={{ color: '#1F2A3D' }}>
-                      {formatDate(entry.date)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="inline-block rounded-md px-2 py-0.5 text-xs font-semibold"
-                        style={{ background: '#f0f0ff', color: '#635BFF' }}
-                      >
-                        {entry.bus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium" style={{ color: '#1F2A3D' }}>{entry.litres}</td>
-                    <td className="px-4 py-3 text-right" style={{ color: '#98A4AE' }}>{entry.rate.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-medium" style={{ color: '#2EA95C' }}>
-                      {formatCurrency(entry.amount)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums" style={{ color: '#1F2A3D' }}>
-                      {entry.odometer.toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-4 py-3" style={{ color: '#98A4AE' }}>{entry.station}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="table-footer">
+          Total: 322 Litres &middot; {'\u20B9'}28,447
         </div>
       </div>
     </div>
-  )
+  );
 }

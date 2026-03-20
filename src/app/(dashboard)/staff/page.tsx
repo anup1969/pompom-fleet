@@ -2,466 +2,233 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-/* ──────────────── Types ──────────────── */
-type StaffRole = 'Driver' | 'Assistant' | 'Lady Attendant';
-type StaffStatus = 'Active' | 'On Leave' | 'Inactive';
+/* ─── Types ─── */
+type StaffRole = 'driver' | 'assistant' | 'lady-attendant';
 
 interface StaffMember {
-  id: string;
+  id: number;
+  initials: string;
+  avatarBg: string;
+  avatarColor: string;
   name: string;
+  fatherName: string;
   role: StaffRole;
-  assignedBus: string;
+  roleLabel: string;
+  roleBadge: string;
+  dob: string;
+  aadhar: string;
+  license: string;
+  licenseExpiry: string;
+  licenseExpired?: boolean;
   phone: string;
-  licenseExpiry: string | null; // ISO date, null for non-drivers
-  salary: number;
-  status: StaffStatus;
-  aadharNo: string;
-  joinDate: string;
+  salary: string;
+  status: string;
+  statusBadge: string;
 }
 
-/* ──────────────── Demo Data ──────────────── */
-const DEMO_STAFF: StaffMember[] = [
+/* ─── Demo Data ─── */
+const STAFF: StaffMember[] = [
   {
-    id: '1',
-    name: 'Ramesh Solanki',
-    role: 'Driver',
-    assignedBus: 'GJ-01-AB-1234',
-    phone: '98765 43210',
-    licenseExpiry: '2026-05-15',
-    salary: 18000,
-    status: 'Active',
-    aadharNo: '4567 8901 2345',
-    joinDate: '2019-06-01',
+    id: 1, initials: 'RS', avatarBg: 'var(--lightprimary)', avatarColor: 'var(--primary)',
+    name: 'Ramesh Solanki', fatherName: 'Harish Solanki', role: 'driver', roleLabel: 'Driver', roleBadge: 'badge-primary',
+    dob: '15 Jun 1985', aadhar: '8834-XXXX-5501', license: 'GJ01-2019-005501',
+    licenseExpiry: '17 Mar 2026', licenseExpired: true,
+    phone: '98250 12001', salary: '\u20B915,000', status: 'Active', statusBadge: 'badge-success',
   },
   {
-    id: '2',
-    name: 'Mukesh Khatri',
-    role: 'Driver',
-    assignedBus: 'GJ-01-CD-5678',
-    phone: '98765 12340',
-    licenseExpiry: '2026-04-02',
-    salary: 18000,
-    status: 'Active',
-    aadharNo: '5678 9012 3456',
-    joinDate: '2020-03-15',
+    id: 2, initials: 'MK', avatarBg: 'var(--lightsuccess)', avatarColor: 'var(--success)',
+    name: 'Mukesh Khatri', fatherName: 'Dinesh Khatri', role: 'driver', roleLabel: 'Driver', roleBadge: 'badge-primary',
+    dob: '22 Jan 1982', aadhar: '7721-XXXX-5502', license: 'GJ01-2020-005502',
+    licenseExpiry: '14 Nov 2026',
+    phone: '98250 12002', salary: '\u20B914,500', status: 'Active', statusBadge: 'badge-success',
   },
   {
-    id: '3',
-    name: 'Jayesh Patel',
-    role: 'Driver',
-    assignedBus: 'GJ-01-EF-9012',
-    phone: '98765 67890',
-    licenseExpiry: '2027-11-30',
-    salary: 17000,
-    status: 'Active',
-    aadharNo: '6789 0123 4567',
-    joinDate: '2021-01-10',
+    id: 3, initials: 'JP', avatarBg: 'var(--lightwarning)', avatarColor: '#b45309',
+    name: 'Jayesh Patel', fatherName: 'Kantilal Patel', role: 'driver', roleLabel: 'Driver', roleBadge: 'badge-primary',
+    dob: '8 Mar 1990', aadhar: '6612-XXXX-5503', license: 'GJ01-2021-005503',
+    licenseExpiry: '28 Feb 2027',
+    phone: '98250 12003', salary: '\u20B914,000', status: 'Active', statusBadge: 'badge-success',
   },
   {
-    id: '4',
-    name: 'Arjun Sharma',
-    role: 'Assistant',
-    assignedBus: 'GJ-01-AB-1234',
-    phone: '99887 65432',
-    licenseExpiry: null,
-    salary: 12000,
-    status: 'Active',
-    aadharNo: '7890 1234 5678',
-    joinDate: '2022-07-20',
+    id: 4, initials: 'AS', avatarBg: 'var(--lightsecondary)', avatarColor: '#0e7490',
+    name: 'Arjun Sharma', fatherName: 'Bhavesh Sharma', role: 'assistant', roleLabel: 'Assistant', roleBadge: 'badge-info',
+    dob: '11 Sep 1995', aadhar: '5509-XXXX-5504', license: '\u2014',
+    licenseExpiry: '\u2014',
+    phone: '98250 12004', salary: '\u20B910,000', status: 'Active', statusBadge: 'badge-success',
   },
   {
-    id: '5',
-    name: 'Vijay Desai',
-    role: 'Assistant',
-    assignedBus: 'GJ-01-EF-9012',
-    phone: '99887 11223',
-    licenseExpiry: null,
-    salary: 12000,
-    status: 'On Leave',
-    aadharNo: '8901 2345 6789',
-    joinDate: '2023-02-01',
+    id: 5, initials: 'VD', avatarBg: 'var(--lighterror)', avatarColor: 'var(--error)',
+    name: 'Vijay Desai', fatherName: 'Prakash Desai', role: 'assistant', roleLabel: 'Assistant', roleBadge: 'badge-info',
+    dob: '3 Jul 1992', aadhar: '4401-XXXX-5505', license: '\u2014',
+    licenseExpiry: '\u2014',
+    phone: '98250 12005', salary: '\u20B99,500', status: 'Active', statusBadge: 'badge-success',
   },
   {
-    id: '6',
-    name: 'Savita Mehta',
-    role: 'Lady Attendant',
-    assignedBus: 'GJ-01-AB-1234',
-    phone: '99001 22334',
-    licenseExpiry: null,
-    salary: 10000,
-    status: 'Active',
-    aadharNo: '9012 3456 7890',
-    joinDate: '2023-08-15',
+    id: 6, initials: 'SM', avatarBg: 'var(--lightaccent)', avatarColor: '#92400e',
+    name: 'Savita Mehta', fatherName: '\u2014', role: 'lady-attendant', roleLabel: 'Lady Attendant', roleBadge: 'badge-accent',
+    dob: '18 Dec 1988', aadhar: '3398-XXXX-5506', license: '\u2014',
+    licenseExpiry: '\u2014',
+    phone: '98250 12006', salary: '\u20B98,500', status: 'Active', statusBadge: 'badge-success',
+  },
+  {
+    id: 7, initials: 'KJ', avatarBg: 'var(--lightprimary)', avatarColor: 'var(--primary)',
+    name: 'Kavita Joshi', fatherName: '\u2014', role: 'lady-attendant', roleLabel: 'Lady Attendant', roleBadge: 'badge-accent',
+    dob: '25 Apr 1991', aadhar: '2287-XXXX-5507', license: '\u2014',
+    licenseExpiry: '\u2014',
+    phone: '98250 12007', salary: '\u20B98,500', status: 'Active', statusBadge: 'badge-success',
   },
 ];
 
-const TABS: { label: string; filter: StaffRole | 'All' }[] = [
-  { label: 'All', filter: 'All' },
-  { label: 'Drivers', filter: 'Driver' },
-  { label: 'Assistants', filter: 'Assistant' },
-  { label: 'Lady Attendants', filter: 'Lady Attendant' },
-];
+/* ─── Tab Counts ─── */
+const allCount = STAFF.length;
+const driverCount = STAFF.filter((s) => s.role === 'driver').length;
+const assistantCount = STAFF.filter((s) => s.role === 'assistant').length;
+const ladyAttendantCount = STAFF.filter((s) => s.role === 'lady-attendant').length;
 
-/* ──────────────── Helpers ──────────────── */
-function formatCurrency(amount: number): string {
-  return '\u20B9' + amount.toLocaleString('en-IN');
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-function daysUntil(iso: string): number {
-  const now = new Date();
-  const target = new Date(iso);
-  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function getRoleIcon(role: StaffRole) {
-  if (role === 'Driver') {
-    return (
-      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 3v9l6 3" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (role === 'Assistant') {
-    return (
-      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4-4v2" />
-        <circle cx="10" cy="7" r="4" />
-      </svg>
-    );
-  }
-  return (
-    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M20 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75M12 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
-      <circle cx="8" cy="7" r="4" />
-    </svg>
-  );
-}
-
-function getRoleBgClass(role: StaffRole): string {
-  if (role === 'Driver') return 'bg-primary/10 text-primary';
-  if (role === 'Assistant') return 'bg-accent/10 text-accent';
-  return 'bg-success/10 text-success';
-}
-
-function getStatusBadge(status: StaffStatus) {
-  const map: Record<StaffStatus, string> = {
-    Active: 'bg-success/10 text-success',
-    'On Leave': 'bg-warning/10 text-warning',
-    Inactive: 'bg-bodytext/10 text-bodytext',
-  };
-  return map[status];
-}
-
-/* ──────────────── Dropdown ──────────────── */
-function ActionDropdown({
-  staffId,
-  onAction,
-}: {
-  staffId: string;
-  onAction: (action: string, id: string) => void;
-}) {
+/* ─── Action Menu Component ─── */
+function ActionMenu({ staffName, onView }: { staffName: string; onView: (n: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="p-1.5 rounded-lg hover:bg-lightgray transition-colors text-bodytext hover:text-dark"
-        aria-label="Actions"
-      >
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <circle cx="12" cy="5" r="1" />
-          <circle cx="12" cy="12" r="1" />
-          <circle cx="12" cy="19" r="1" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-[10px] shadow-lg border border-border z-20 py-1">
-          {['View', 'Edit', 'Delete'].map((action) => (
-            <button
-              key={action}
-              onClick={() => {
-                onAction(action, staffId);
-                setOpen(false);
-              }}
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-lightgray transition-colors ${
-                action === 'Delete' ? 'text-error hover:bg-red-50' : 'text-dark'
-              }`}
-            >
-              {action}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ──────────────── Staff Card ──────────────── */
-function StaffCard({
-  member,
-  onAction,
-  onSelect,
-}: {
-  member: StaffMember;
-  onAction: (action: string, id: string) => void;
-  onSelect: (id: string) => void;
-}) {
-  const expiryDays = member.licenseExpiry ? daysUntil(member.licenseExpiry) : null;
-  const isNearExpiry = expiryDays !== null && expiryDays <= 60;
-  const isExpired = expiryDays !== null && expiryDays <= 0;
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-border hover:shadow-md transition-shadow">
-      {/* Header */}
-      <div className="flex items-start justify-between px-5 pt-5 pb-3">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0 ${getRoleBgClass(member.role)}`}>
-            {getRoleIcon(member.role)}
-          </div>
-          <div>
-            <button
-              onClick={() => onSelect(member.id)}
-              className="text-[15px] font-semibold text-dark hover:text-primary transition-colors cursor-pointer text-left"
-            >
-              {member.name}
-            </button>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs text-bodytext">{member.role}</span>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${getStatusBadge(member.status)}`}>
-                {member.status}
-              </span>
-            </div>
-          </div>
-        </div>
-        <ActionDropdown staffId={member.id} onAction={onAction} />
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-border mx-5" />
-
-      {/* Body */}
-      <div className="px-5 py-4 space-y-3">
-        {/* Assigned Bus */}
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} className="text-bodytext flex-shrink-0">
-            <rect x="3" y="4" width="18" height="12" rx="2" />
-            <path d="M3 12h18M7 20h10M9 16v4M15 16v4" />
-          </svg>
-          <span className="text-sm text-dark font-medium">{member.assignedBus}</span>
-        </div>
-
-        {/* Phone */}
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} className="text-bodytext flex-shrink-0">
-            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
-          </svg>
-          <span className="text-sm text-bodytext">{member.phone}</span>
-        </div>
-
-        {/* License Expiry (drivers only) */}
-        {member.licenseExpiry && (
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} className={`flex-shrink-0 ${isNearExpiry ? 'text-error' : 'text-bodytext'}`}>
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M16 2v4M8 2v4M3 10h18" />
-            </svg>
-            <span className={`text-sm font-medium ${isExpired ? 'text-error' : isNearExpiry ? 'text-error' : 'text-bodytext'}`}>
-              License: {formatDate(member.licenseExpiry)}
-              {isExpired && (
-                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error/10 text-error">
-                  EXPIRED
-                </span>
-              )}
-              {!isExpired && isNearExpiry && (
-                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error/10 text-error">
-                  {expiryDays}d left
-                </span>
-              )}
-            </span>
-          </div>
-        )}
-
-        {/* Salary */}
-        <div className="flex items-center justify-between pt-2 border-t border-dashed border-border">
-          <span className="text-[11px] text-bodytext uppercase tracking-wider font-medium">Salary</span>
-          <span className="text-sm font-bold text-dark">{formatCurrency(member.salary)}/mo</span>
-        </div>
+    <div className="action-wrap" ref={ref}>
+      <button className="btn-icon" onClick={() => setOpen(!open)}>&#8942;</button>
+      <div className={`action-menu${open ? ' show' : ''}`}>
+        <button onClick={() => { onView(staffName); setOpen(false); }}>&#128065; View</button>
+        <button onClick={() => setOpen(false)}>&#9998; Edit</button>
+        <button className="danger" onClick={() => setOpen(false)}>&#128465; Delete</button>
       </div>
     </div>
   );
 }
 
-/* ──────────────── Staff Profile Placeholder ──────────────── */
-function StaffProfile({ member, onClose }: { member: StaffMember; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-xl shadow-xl w-full max-w-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-dark">Staff Profile</h2>
-          <button onClick={onClose} className="text-bodytext hover:text-dark transition-colors">
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-[10px] flex items-center justify-center ${getRoleBgClass(member.role)}`}>
-              <span className="text-xl font-bold">
-                {member.name.split(' ').map((n) => n[0]).join('')}
-              </span>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-dark">{member.name}</p>
-              <p className="text-sm text-bodytext">{member.role} &middot; {member.assignedBus}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 bg-lightgray rounded-[10px] p-4">
-            {[
-              ['Phone', member.phone],
-              ['Aadhar', member.aadharNo],
-              ['Joined', formatDate(member.joinDate)],
-              ['Salary', formatCurrency(member.salary) + '/mo'],
-              ...(member.licenseExpiry ? [['License Expiry', formatDate(member.licenseExpiry)]] : []),
-              ['Status', member.status],
-            ].map(([label, value]) => (
-              <div key={String(label)}>
-                <p className="text-[11px] text-bodytext uppercase tracking-wider font-medium">{String(label)}</p>
-                <p className="text-sm font-semibold text-dark mt-0.5">{String(value)}</p>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-sm text-bodytext text-center py-2 italic">
-            Full profile with Documents tab, Attendance history, and Salary log coming soon.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────── Page ──────────────── */
 export default function StaffPage() {
-  const [activeTab, setActiveTab] = useState<StaffRole | 'All'>('All');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | StaffRole>('all');
 
-  const filtered = activeTab === 'All'
-    ? DEMO_STAFF
-    : DEMO_STAFF.filter((s) => s.role === activeTab);
+  const filtered = activeTab === 'all' ? STAFF : STAFF.filter((s) => s.role === activeTab);
 
-  const tabCounts: Record<string, number> = {
-    All: DEMO_STAFF.length,
-    Driver: DEMO_STAFF.filter((s) => s.role === 'Driver').length,
-    Assistant: DEMO_STAFF.filter((s) => s.role === 'Assistant').length,
-    'Lady Attendant': DEMO_STAFF.filter((s) => s.role === 'Lady Attendant').length,
-  };
-
-  function handleAction(action: string, id: string) {
-    if (action === 'View') setSelectedId(id);
+  function handleView(name: string) {
+    alert(`View staff profile: ${name}`);
   }
 
-  const selectedMember = DEMO_STAFF.find((s) => s.id === selectedId);
-
   return (
-    <div className="p-6 max-w-[1400px] mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-dark">Staff Management</h1>
-          <p className="text-sm text-bodytext mt-1">
-            Manage drivers, assistants &amp; lady attendants
-          </p>
+    <div className="card">
+      <div className="card-header">
+        <h3>Transport Staff</h3>
+        <button className="btn btn-primary btn-sm">+ Add Staff</button>
+      </div>
+      <div className="card-body">
+        {/* Tab Pills */}
+        <div className="tab-pills">
+          <button
+            className={`tab-pill${activeTab === 'all' ? ' active' : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            All ({allCount})
+          </button>
+          <button
+            className={`tab-pill${activeTab === 'driver' ? ' active' : ''}`}
+            onClick={() => setActiveTab('driver')}
+          >
+            Drivers ({driverCount})
+          </button>
+          <button
+            className={`tab-pill${activeTab === 'assistant' ? ' active' : ''}`}
+            onClick={() => setActiveTab('assistant')}
+          >
+            Assistants ({assistantCount})
+          </button>
+          <button
+            className={`tab-pill${activeTab === 'lady-attendant' ? ' active' : ''}`}
+            onClick={() => setActiveTab('lady-attendant')}
+          >
+            Lady Attendants ({ladyAttendantCount})
+          </button>
         </div>
-        <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-[10px] hover:bg-primary/90 transition-colors shadow-sm">
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-          </svg>
-          Add Staff
-        </button>
-      </div>
 
-      {/* Tab Pills */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.filter;
-          const count = tabCounts[tab.filter];
-          return (
-            <button
-              key={tab.filter}
-              onClick={() => setActiveTab(tab.filter)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'bg-white text-bodytext border border-border hover:bg-lightgray hover:text-dark'
-              }`}
-            >
-              {tab.label}
-              <span
-                className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-semibold ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-lightgray text-bodytext'
-                }`}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Staff Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {filtered.map((member) => (
-          <StaffCard
-            key={member.id}
-            member={member}
-            onAction={handleAction}
-            onSelect={setSelectedId}
-          />
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-full bg-lightgray flex items-center justify-center mb-4">
-            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-bodytext">
-              <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-            </svg>
-          </div>
-          <p className="text-sm text-bodytext">No staff found in this category.</p>
+        {/* Staff Table */}
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Father&apos;s Name</th>
+                <th>Role</th>
+                <th>DOB</th>
+                <th>Aadhar</th>
+                <th>License</th>
+                <th>License Expiry</th>
+                <th>Phone</th>
+                <th>Salary (&#8377;)</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((staff, idx) => (
+                <tr key={staff.id} data-role={staff.role}>
+                  <td>{idx + 1}</td>
+                  <td>
+                    <div
+                      className="avatar"
+                      style={{ background: staff.avatarBg, color: staff.avatarColor }}
+                    >
+                      {staff.initials}
+                    </div>
+                  </td>
+                  <td>
+                    <a className="clickable-link" onClick={() => handleView(staff.name)}>
+                      {staff.name}
+                    </a>
+                  </td>
+                  <td>{staff.fatherName}</td>
+                  <td>
+                    <span className={`badge ${staff.roleBadge}`}>{staff.roleLabel}</span>
+                  </td>
+                  <td>{staff.dob}</td>
+                  <td>
+                    <a className="clickable-link">{staff.aadhar}</a>
+                  </td>
+                  <td>
+                    {staff.license === '\u2014' ? (
+                      '\u2014'
+                    ) : (
+                      <a className="clickable-link">{staff.license}</a>
+                    )}
+                  </td>
+                  <td>
+                    {staff.licenseExpired ? (
+                      <span style={{ color: 'var(--error)', fontWeight: 600 }}>
+                        {staff.licenseExpiry}
+                      </span>
+                    ) : (
+                      staff.licenseExpiry
+                    )}
+                  </td>
+                  <td>{staff.phone}</td>
+                  <td>{staff.salary}</td>
+                  <td>
+                    <span className={`badge ${staff.statusBadge}`}>{staff.status}</span>
+                  </td>
+                  <td>
+                    <ActionMenu staffName={staff.name} onView={handleView} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
-
-      {/* Profile Modal */}
-      {selectedMember && (
-        <StaffProfile member={selectedMember} onClose={() => setSelectedId(null)} />
-      )}
+      </div>
     </div>
   );
 }

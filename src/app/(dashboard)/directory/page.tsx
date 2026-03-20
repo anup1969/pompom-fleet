@@ -2,298 +2,155 @@
 
 import { useState } from 'react';
 
-/* ──────────────── Types ──────────────── */
-type Category = 'All' | 'Drivers' | 'Assistants' | 'Lady Attendants' | 'Emergency' | 'Vendors';
-
+/* ──────────────── Demo Data ──────────────── */
 interface Contact {
-  id: string;
+  id: number;
   name: string;
   phone: string;
-  category: Exclude<Category, 'All'>;
-  designation: string;
-  notes: string;
+  phoneRaw: string;
+  category: string;
+  catBadge: string;
+  company: string;
+  address: string;
+  isStaff: boolean;
 }
 
-/* ──────────────── Demo Data ──────────────── */
 const DEMO_CONTACTS: Contact[] = [
-  // Staff — same 6 staff referenced across the app
-  {
-    id: '1',
-    name: 'Ramesh Patel',
-    phone: '+91 98765 43210',
-    category: 'Drivers',
-    designation: 'Senior Driver',
-    notes: 'Bus GJ-01-AB-1234. 8+ years experience.',
-  },
-  {
-    id: '2',
-    name: 'Suresh Sharma',
-    phone: '+91 98765 43211',
-    category: 'Drivers',
-    designation: 'Driver',
-    notes: 'Bus GJ-01-CD-5678. Handles highway routes.',
-  },
-  {
-    id: '3',
-    name: 'Vikram Singh',
-    phone: '+91 98765 43212',
-    category: 'Drivers',
-    designation: 'Driver',
-    notes: 'Bus GJ-01-EF-9012. Available for extra trips.',
-  },
-  {
-    id: '4',
-    name: 'Manoj Joshi',
-    phone: '+91 98765 43213',
-    category: 'Assistants',
-    designation: 'Bus Assistant',
-    notes: 'Assigned to Bus GJ-01-GH-3456.',
-  },
-  {
-    id: '5',
-    name: 'Dinesh Kumar',
-    phone: '+91 98765 43214',
-    category: 'Assistants',
-    designation: 'Bus Assistant',
-    notes: 'Assigned to Bus GJ-01-IJ-7890.',
-  },
-  {
-    id: '6',
-    name: 'Sunita Devi',
-    phone: '+91 98765 43215',
-    category: 'Lady Attendants',
-    designation: 'Lady Attendant',
-    notes: 'Assigned to Bus GJ-01-KL-2345. Handles KG students.',
-  },
-  {
-    id: '7',
-    name: 'Kavita Rani',
-    phone: '+91 98765 43216',
-    category: 'Lady Attendants',
-    designation: 'Lady Attendant',
-    notes: 'Assigned to Bus GJ-01-AB-1234. Morning shift.',
-  },
-  // Emergency
-  {
-    id: '8',
-    name: 'RTO Helpline',
-    phone: '1800-233-0600',
-    category: 'Emergency',
-    designation: 'Government',
-    notes: 'Regional Transport Office — toll free.',
-  },
-  {
-    id: '9',
-    name: 'Police Control Room',
-    phone: '100',
-    category: 'Emergency',
-    designation: 'Government',
-    notes: 'For accidents or law enforcement.',
-  },
-  {
-    id: '10',
-    name: 'Fire Brigade',
-    phone: '101',
-    category: 'Emergency',
-    designation: 'Government',
-    notes: 'Fire and rescue services.',
-  },
-  {
-    id: '11',
-    name: 'Ambulance',
-    phone: '108',
-    category: 'Emergency',
-    designation: 'Medical',
-    notes: 'GVK EMRI — emergency medical response.',
-  },
-  {
-    id: '12',
-    name: 'Insurance Helpline (ICICI)',
-    phone: '1800-266-7780',
-    category: 'Emergency',
-    designation: 'Insurance',
-    notes: 'ICICI Lombard 24x7 claims helpline.',
-  },
-  // Vendors
-  {
-    id: '13',
-    name: 'AutoFix Garage',
-    phone: '+91 79123 45678',
-    category: 'Vendors',
-    designation: 'Mechanic / Garage',
-    notes: 'Primary service center. Tata & Ashok Leyland specialist.',
-  },
-  {
-    id: '14',
-    name: 'SpeedTyre Solutions',
-    phone: '+91 79123 45679',
-    category: 'Vendors',
-    designation: 'Tyre Dealer',
-    notes: 'Apollo & MRF tyres. Bulk discount available.',
-  },
-  {
-    id: '15',
-    name: 'GreenFuel Diesel Supply',
-    phone: '+91 79123 45680',
-    category: 'Vendors',
-    designation: 'Fuel Supplier',
-    notes: 'Bulk diesel delivery. Monthly billing.',
-  },
-  {
-    id: '16',
-    name: 'SafeDrive Insurance Broker',
-    phone: '+91 79123 45681',
-    category: 'Vendors',
-    designation: 'Insurance Broker',
-    notes: 'Handles all fleet insurance renewals.',
-  },
+  { id: 1, name: 'Ramesh Solanki', phone: '98250 12001', phoneRaw: '9825012001', category: 'Staff', catBadge: 'badge-primary', company: 'Driver \u2014 Bus #1', address: 'Isanpur, Ahmedabad', isStaff: true },
+  { id: 2, name: 'Mukesh Khatri', phone: '98250 12002', phoneRaw: '9825012002', category: 'Staff', catBadge: 'badge-primary', company: 'Driver \u2014 Bus #2', address: 'Narol, Ahmedabad', isStaff: true },
+  { id: 3, name: 'Jayesh Patel', phone: '98250 12003', phoneRaw: '9825012003', category: 'Staff', catBadge: 'badge-primary', company: 'Driver \u2014 Bus #3', address: 'Maninagar, Ahmedabad', isStaff: true },
+  { id: 4, name: 'Arjun Sharma', phone: '98250 12004', phoneRaw: '9825012004', category: 'Staff', catBadge: 'badge-primary', company: 'Assistant \u2014 Bus #1', address: 'Vastral, Ahmedabad', isStaff: true },
+  { id: 5, name: 'Vijay Desai', phone: '98250 12005', phoneRaw: '9825012005', category: 'Staff', catBadge: 'badge-primary', company: 'Assistant \u2014 Bus #3', address: 'Odhav, Ahmedabad', isStaff: true },
+  { id: 6, name: 'Savita Mehta', phone: '98250 12006', phoneRaw: '9825012006', category: 'Staff', catBadge: 'badge-primary', company: 'Lady Attendant \u2014 Bus #1', address: 'Isanpur, Ahmedabad', isStaff: true },
+  { id: 7, name: 'Kavita Joshi', phone: '98250 12007', phoneRaw: '9825012007', category: 'Staff', catBadge: 'badge-primary', company: 'Lady Attendant \u2014 Bus #2', address: 'Vastral, Ahmedabad', isStaff: true },
+  { id: 8, name: 'Suresh Mehta', phone: '98250 34505', phoneRaw: '9825034505', category: 'RTO Agent', catBadge: 'badge-accent', company: 'Mehta Consultancy', address: 'Subhash Bridge, Ahmedabad', isStaff: false },
+  { id: 9, name: 'Dinesh Vora', phone: '98250 34510', phoneRaw: '9825034510', category: 'RTO Agent', catBadge: 'badge-accent', company: 'Vora RTO Services', address: 'Ashram Road, Ahmedabad', isStaff: false },
+  { id: 10, name: 'Hemant Joshi', phone: '98250 34504', phoneRaw: '9825034504', category: 'Insurance', catBadge: 'badge-success', company: 'New India Assurance Co.', address: 'Navrangpura, Ahmedabad', isStaff: false },
+  { id: 11, name: 'Rajesh Sharma', phone: '98250 34501', phoneRaw: '9825034501', category: 'Mechanic', catBadge: 'badge-info', company: 'Sharma Auto Works', address: 'Nr. Isanpur Cross Rd, Ahmedabad', isStaff: false },
+  { id: 12, name: 'Kamlesh Rathod', phone: '98250 34511', phoneRaw: '9825034511', category: 'Mechanic', catBadge: 'badge-info', company: 'Rathod Diesel Garage', address: 'Narol Industrial Area, Ahmedabad', isStaff: false },
+  { id: 13, name: 'Bharat Gohil', phone: '98250 34506', phoneRaw: '9825034506', category: 'Towing', catBadge: 'badge-error', company: 'City Towing Pvt Ltd', address: 'Paldi, Ahmedabad', isStaff: false },
+  { id: 14, name: 'Nilesh Patel', phone: '98250 34503', phoneRaw: '9825034503', category: 'Spare Parts', catBadge: 'badge-primary', company: 'Patel Tyre House', address: 'Narol Circle, Ahmedabad', isStaff: false },
+  { id: 15, name: 'Vikas Trivedi', phone: '98250 34512', phoneRaw: '9825034512', category: 'Other', catBadge: 'badge-warning', company: 'Trivedi Electricals', address: 'Maninagar, Ahmedabad', isStaff: false },
 ];
 
-const CATEGORIES: Category[] = ['All', 'Drivers', 'Assistants', 'Lady Attendants', 'Emergency', 'Vendors'];
+const CATEGORY_TABS = [
+  { key: 'all', label: 'All (15)' },
+  { key: 'Staff', label: 'Staff (7)' },
+  { key: 'RTO Agent', label: 'RTO Agent (2)' },
+  { key: 'Insurance', label: 'Insurance (1)' },
+  { key: 'Mechanic', label: 'Mechanic (2)' },
+  { key: 'Towing', label: 'Towing (1)' },
+  { key: 'Spare Parts', label: 'Spare Parts (1)' },
+  { key: 'Other', label: 'Other (1)' },
+];
 
-/* ──────────────── Page ──────────────── */
-export default function PhoneDirectoryPage() {
-  const [activeTab, setActiveTab] = useState<Category>('All');
+export default function DirectoryPage() {
+  const [catFilter, setCatFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [openMenu, setOpenMenu] = useState<number | null>(null);
 
   const filtered = DEMO_CONTACTS.filter((c) => {
-    const matchesTab = activeTab === 'All' || c.category === activeTab;
-    const matchesSearch =
-      search === '' ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search) ||
-      c.designation.toLowerCase().includes(search.toLowerCase()) ||
-      c.notes.toLowerCase().includes(search.toLowerCase());
-    return matchesTab && matchesSearch;
+    if (catFilter !== 'all' && c.category !== catFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        c.category.toLowerCase().includes(q) ||
+        c.company.toLowerCase().includes(q)
+      );
+    }
+    return true;
   });
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-dark">Phone Directory</h1>
-          <p className="text-sm text-bodytext mt-1">
-            {DEMO_CONTACTS.length} contacts &middot; Quick-access directory for all transport-related numbers
-          </p>
+    <div className="card">
+      <div className="card-header">
+        <h3>Phone Directory</h3>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input
+            className="form-input"
+            type="text"
+            placeholder="Search contacts..."
+            style={{ width: 220, height: 38 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button className="btn btn-primary btn-sm">+ Add Contact</button>
         </div>
       </div>
-
-      {/* Card wrapper */}
-      <div className="bg-white rounded-xl shadow-card border border-border">
-        {/* Toolbar: Search + Tabs */}
-        <div className="px-5 pt-5 pb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Search */}
-          <div className="relative w-full lg:w-80">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-bodytext"
-              width="16"
-              height="16"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+      <div className="card-body">
+        {/* Tab Pill Filters */}
+        <div className="tab-pills">
+          {CATEGORY_TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`tab-pill${catFilter === t.key ? ' active' : ''}`}
+              onClick={() => setCatFilter(t.key)}
             >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search name, phone, designation..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-[10px] bg-lightgray focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-dark placeholder:text-bodytext"
-            />
-          </div>
-
-          {/* Pill Tabs */}
-          <div className="pill-tabs flex-shrink-0 overflow-x-auto">
-            {CATEGORIES.map((cat) => {
-              const count =
-                cat === 'All'
-                  ? DEMO_CONTACTS.length
-                  : DEMO_CONTACTS.filter((c) => c.category === cat).length;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setActiveTab(cat)}
-                  className={`pill-tab whitespace-nowrap ${activeTab === cat ? 'active' : ''}`}
-                >
-                  {cat}
-                  <span className="ml-1.5 text-[11px] opacity-60">({count})</span>
-                </button>
-              );
-            })}
-          </div>
+              {t.label}
+            </button>
+          ))}
         </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
+        <div className="table-wrap">
+          <table>
             <thead>
-              <tr className="border-t border-border bg-lightgray/60">
-                <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-bodytext">Name</th>
-                <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-bodytext">Phone</th>
-                <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-bodytext">Category</th>
-                <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-bodytext">Designation</th>
-                <th className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-bodytext">Notes</th>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Category</th>
+                <th>Company / Bus</th>
+                <th>Address</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-bodytext text-sm">
-                    No contacts found.
+              {filtered.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.id}</td>
+                  <td>
+                    {c.isStaff ? (
+                      <a className="clickable-link">{c.name}</a>
+                    ) : (
+                      c.name
+                    )}
+                  </td>
+                  <td>
+                    <a href={`tel:+91${c.phoneRaw}`} style={{ color: 'var(--success)', fontWeight: 500 }}>
+                      {c.phone}
+                    </a>
+                  </td>
+                  <td>
+                    <span className={`badge ${c.catBadge}`}>{c.category}</span>
+                  </td>
+                  <td>{c.company}</td>
+                  <td>{c.address}</td>
+                  <td>
+                    <div className="action-wrap">
+                      <button
+                        className="btn-icon"
+                        onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}
+                      >
+                        &#8942;
+                      </button>
+                      <div className={`action-menu${openMenu === c.id ? ' show' : ''}`}>
+                        {c.isStaff && (
+                          <button onClick={() => setOpenMenu(null)}>{'\uD83D\uDC41'} View</button>
+                        )}
+                        <button onClick={() => setOpenMenu(null)}>&#9998; Edit</button>
+                        {!c.isStaff && (
+                          <button className="danger" onClick={() => setOpenMenu(null)}>
+                            {'\uD83D\uDDD1'} Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filtered.map((contact) => (
-                  <tr
-                    key={contact.id}
-                    className="border-t border-border hover:bg-lightgray/40 transition-colors"
-                  >
-                    <td className="px-5 py-3.5">
-                      <span className="text-sm font-semibold text-dark">{contact.name}</span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <a
-                        href={`tel:${contact.phone.replace(/\s/g, '')}`}
-                        className="text-sm text-primary font-medium hover:underline"
-                      >
-                        {contact.phone}
-                      </a>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`badge ${
-                          contact.category === 'Drivers'
-                            ? 'badge-success'
-                            : contact.category === 'Assistants'
-                            ? 'bg-primary/10 text-primary'
-                            : contact.category === 'Lady Attendants'
-                            ? 'bg-secondary/10 text-secondary'
-                            : contact.category === 'Emergency'
-                            ? 'badge-error'
-                            : 'badge-warning'
-                        }`}
-                      >
-                        {contact.category}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-dark">{contact.designation}</td>
-                    <td className="px-5 py-3.5 text-sm text-bodytext max-w-xs truncate">{contact.notes}</td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-border flex items-center justify-between">
-          <p className="text-xs text-bodytext">
-            Showing {filtered.length} of {DEMO_CONTACTS.length} contacts
-          </p>
         </div>
       </div>
     </div>

@@ -13,7 +13,16 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    <>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed(!collapsed)}
@@ -21,24 +30,11 @@ export default function DashboardLayout({
         onMobileClose={() => setMobileOpen(false)}
       />
 
-      {/* Main content area — offset by sidebar width */}
-      <div
-        className="flex-1 flex flex-col min-h-screen transition-[margin] duration-250 ease-in-out lg:ml-sidebar-expanded"
-        style={{
-          marginLeft: undefined, // handled by className on lg
-        }}
-      >
-        <style>{`
-          @media (min-width: 1024px) {
-            .lg\\:ml-sidebar-expanded {
-              margin-left: ${collapsed ? "60px" : "250px"};
-              transition: margin-left 0.25s ease;
-            }
-          }
-        `}</style>
+      {/* Main area */}
+      <div className={`main ${collapsed ? "expanded" : ""}`}>
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <div className="content">{children}</div>
       </div>
-    </div>
+    </>
   );
 }
