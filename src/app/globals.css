@@ -1,26 +1,324 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* MatDash Design Tokens */
+  --color-primary: #635BFF;
+  --color-secondary: #16CDC7;
+  --color-success: #2EA95C;
+  --color-warning: #f8c20a;
+  --color-error: #FF6692;
+  --color-info: #46CAEB;
+  --color-dark: #1F2A3D;
+  --color-darkgray: #1A2537;
+  --color-bodytext: #98A4AE;
+  --color-lightgray: #F4F7FB;
+  --color-border: #e5e5e5;
+  --color-accent: #F59E0B;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+
+  /* Shadows */
+  --shadow-card: 0px 2px 4px -1px rgba(175, 182, 201, 0.2);
+
+  /* Sidebar widths */
+  --spacing-sidebar-expanded: 250px;
+  --spacing-sidebar-collapsed: 60px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ========== BASE ========== */
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Inter", sans-serif;
+  background-color: var(--color-lightgray);
+  color: var(--color-dark);
+  margin: 0;
+  padding: 0;
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-lightgray);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-bodytext);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-dark);
+}
+
+/* ========== SIDEBAR ========== */
+.sidebar {
+  background: var(--color-dark);
+  color: #ffffff;
+  transition: width 0.25s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+}
+
+.sidebar-expanded {
+  width: 250px;
+}
+
+.sidebar-collapsed {
+  width: 60px;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin: 2px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-bodytext);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.sidebar-nav-item.active {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.sidebar-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(152, 164, 174, 0.6);
+  padding: 16px 16px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ========== CARDS ========== */
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0px 2px 4px -1px rgba(175, 182, 201, 0.2);
+  padding: 24px;
+}
+
+.stat-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0px 2px 4px -1px rgba(175, 182, 201, 0.2);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 4px 12px -2px rgba(175, 182, 201, 0.35);
+}
+
+.stat-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ========== ALERT BANNER ========== */
+.alert-banner {
+  border-radius: 10px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alert-banner-error {
+  background: rgba(255, 102, 146, 0.1);
+  border: 1px solid rgba(255, 102, 146, 0.25);
+  color: var(--color-error);
+}
+
+/* ========== PILL TABS ========== */
+.pill-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--color-lightgray);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.pill-tab {
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-bodytext);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+}
+
+.pill-tab:hover {
+  color: var(--color-dark);
+}
+
+.pill-tab.active {
+  background: #ffffff;
+  color: var(--color-dark);
+  box-shadow: 0px 1px 3px rgba(175, 182, 201, 0.2);
+}
+
+/* ========== QUICK ACTION BUTTON ========== */
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  color: var(--color-dark);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.quick-action-btn:hover {
+  border-color: var(--color-primary);
+  background: rgba(99, 91, 255, 0.04);
+  color: var(--color-primary);
+}
+
+.quick-action-btn-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========== HEADER ========== */
+.header {
+  background: #ffffff;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+/* ========== ATTENDANCE CARD ========== */
+.attendance-card {
+  border-radius: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  transition: border-color 0.15s ease;
+}
+
+.attendance-card:hover {
+  border-color: var(--color-primary);
+}
+
+.attendance-status-present {
+  color: var(--color-success);
+  background: rgba(46, 169, 92, 0.1);
+}
+
+.attendance-status-absent {
+  color: var(--color-error);
+  background: rgba(255, 102, 146, 0.1);
+}
+
+.attendance-status-leave {
+  color: var(--color-warning);
+  background: rgba(248, 194, 10, 0.1);
+}
+
+/* ========== LIST ITEMS ========== */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+/* ========== MOBILE OVERLAY ========== */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 35;
+}
+
+/* ========== UTILITIES ========== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-warning {
+  background: rgba(248, 194, 10, 0.12);
+  color: #b58a00;
+}
+
+.badge-error {
+  background: rgba(255, 102, 146, 0.12);
+  color: var(--color-error);
+}
+
+.badge-success {
+  background: rgba(46, 169, 92, 0.12);
+  color: var(--color-success);
 }
