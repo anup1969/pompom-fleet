@@ -24,6 +24,7 @@ const managementNav: NavItem[] = [
   { label: "Phone Directory", href: "/directory", icon: "\uD83D\uDCDE" },
   { label: "Document Expiry", href: "/documents", icon: "\uD83D\uDCC4" },
   { label: "Insurance", href: "/insurance", icon: "\uD83D\uDCCB" },
+  { label: "Masters", href: "/masters", icon: "\u2699" },
 ];
 
 interface SidebarProps {
