@@ -1,92 +1,58 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSession } from '@/lib/session-context';
+import AddStaffModal from '@/components/modals/AddStaffModal';
+import StaffProfileModal from '@/components/modals/StaffProfileModal';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /* ─── Types ─── */
-type StaffRole = 'driver' | 'assistant' | 'lady-attendant';
+type StaffTabKey = 'all' | 'Driver' | 'Assistant' | 'Lady Attendant';
 
-interface StaffMember {
-  id: number;
-  initials: string;
-  avatarBg: string;
-  avatarColor: string;
-  name: string;
-  fatherName: string;
-  role: StaffRole;
-  roleLabel: string;
-  roleBadge: string;
-  dob: string;
-  aadhar: string;
-  license: string;
-  licenseExpiry: string;
-  licenseExpired?: boolean;
-  phone: string;
-  salary: string;
-  status: string;
-  statusBadge: string;
+/* ─── Helpers ─── */
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
-/* ─── Demo Data ─── */
-const STAFF: StaffMember[] = [
-  {
-    id: 1, initials: 'RS', avatarBg: 'var(--lightprimary)', avatarColor: 'var(--primary)',
-    name: 'Ramesh Solanki', fatherName: 'Harish Solanki', role: 'driver', roleLabel: 'Driver', roleBadge: 'badge-primary',
-    dob: '15 Jun 1985', aadhar: '8834-XXXX-5501', license: 'GJ01-2019-005501',
-    licenseExpiry: '17 Mar 2026', licenseExpired: true,
-    phone: '98250 12001', salary: '\u20B915,000', status: 'Active', statusBadge: 'badge-success',
-  },
-  {
-    id: 2, initials: 'MK', avatarBg: 'var(--lightsuccess)', avatarColor: 'var(--success)',
-    name: 'Mukesh Khatri', fatherName: 'Dinesh Khatri', role: 'driver', roleLabel: 'Driver', roleBadge: 'badge-primary',
-    dob: '22 Jan 1982', aadhar: '7721-XXXX-5502', license: 'GJ01-2020-005502',
-    licenseExpiry: '14 Nov 2026',
-    phone: '98250 12002', salary: '\u20B914,500', status: 'Active', statusBadge: 'badge-success',
-  },
-  {
-    id: 3, initials: 'JP', avatarBg: 'var(--lightwarning)', avatarColor: '#b45309',
-    name: 'Jayesh Patel', fatherName: 'Kantilal Patel', role: 'driver', roleLabel: 'Driver', roleBadge: 'badge-primary',
-    dob: '8 Mar 1990', aadhar: '6612-XXXX-5503', license: 'GJ01-2021-005503',
-    licenseExpiry: '28 Feb 2027',
-    phone: '98250 12003', salary: '\u20B914,000', status: 'Active', statusBadge: 'badge-success',
-  },
-  {
-    id: 4, initials: 'AS', avatarBg: 'var(--lightsecondary)', avatarColor: '#0e7490',
-    name: 'Arjun Sharma', fatherName: 'Bhavesh Sharma', role: 'assistant', roleLabel: 'Assistant', roleBadge: 'badge-info',
-    dob: '11 Sep 1995', aadhar: '5509-XXXX-5504', license: '\u2014',
-    licenseExpiry: '\u2014',
-    phone: '98250 12004', salary: '\u20B910,000', status: 'Active', statusBadge: 'badge-success',
-  },
-  {
-    id: 5, initials: 'VD', avatarBg: 'var(--lighterror)', avatarColor: 'var(--error)',
-    name: 'Vijay Desai', fatherName: 'Prakash Desai', role: 'assistant', roleLabel: 'Assistant', roleBadge: 'badge-info',
-    dob: '3 Jul 1992', aadhar: '4401-XXXX-5505', license: '\u2014',
-    licenseExpiry: '\u2014',
-    phone: '98250 12005', salary: '\u20B99,500', status: 'Active', statusBadge: 'badge-success',
-  },
-  {
-    id: 6, initials: 'SM', avatarBg: 'var(--lightaccent)', avatarColor: '#92400e',
-    name: 'Savita Mehta', fatherName: '\u2014', role: 'lady-attendant', roleLabel: 'Lady Attendant', roleBadge: 'badge-accent',
-    dob: '18 Dec 1988', aadhar: '3398-XXXX-5506', license: '\u2014',
-    licenseExpiry: '\u2014',
-    phone: '98250 12006', salary: '\u20B98,500', status: 'Active', statusBadge: 'badge-success',
-  },
-  {
-    id: 7, initials: 'KJ', avatarBg: 'var(--lightprimary)', avatarColor: 'var(--primary)',
-    name: 'Kavita Joshi', fatherName: '\u2014', role: 'lady-attendant', roleLabel: 'Lady Attendant', roleBadge: 'badge-accent',
-    dob: '25 Apr 1991', aadhar: '2287-XXXX-5507', license: '\u2014',
-    licenseExpiry: '\u2014',
-    phone: '98250 12007', salary: '\u20B98,500', status: 'Active', statusBadge: 'badge-success',
-  },
-];
+function roleBadge(role: string): string {
+  switch (role) {
+    case 'Driver': return 'badge-primary';
+    case 'Assistant': return 'badge-info';
+    case 'Lady Attendant': return 'badge-accent';
+    default: return 'badge-primary';
+  }
+}
 
-/* ─── Tab Counts ─── */
-const allCount = STAFF.length;
-const driverCount = STAFF.filter((s) => s.role === 'driver').length;
-const assistantCount = STAFF.filter((s) => s.role === 'assistant').length;
-const ladyAttendantCount = STAFF.filter((s) => s.role === 'lady-attendant').length;
+function avatarColors(idx: number): { bg: string; color: string } {
+  const palette = [
+    { bg: 'var(--lightprimary)', color: 'var(--primary)' },
+    { bg: 'var(--lightsuccess)', color: 'var(--success)' },
+    { bg: 'var(--lightwarning)', color: '#b45309' },
+    { bg: 'var(--lightsecondary)', color: '#0e7490' },
+    { bg: 'var(--lighterror)', color: 'var(--error)' },
+    { bg: 'var(--lightaccent)', color: '#92400e' },
+  ];
+  return palette[idx % palette.length];
+}
 
 /* ─── Action Menu Component ─── */
-function ActionMenu({ staffName, onView }: { staffName: string; onView: (n: string) => void }) {
+function ActionMenu({
+  staff,
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  staff: any;
+  onView: (s: any) => void;
+  onEdit: (s: any) => void;
+  onDelete: (s: any) => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -102,133 +68,248 @@ function ActionMenu({ staffName, onView }: { staffName: string; onView: (n: stri
     <div className="action-wrap" ref={ref}>
       <button className="btn-icon" onClick={() => setOpen(!open)}>&#8942;</button>
       <div className={`action-menu${open ? ' show' : ''}`}>
-        <button onClick={() => { onView(staffName); setOpen(false); }}>&#128065; View</button>
-        <button onClick={() => setOpen(false)}>&#9998; Edit</button>
-        <button className="danger" onClick={() => setOpen(false)}>&#128465; Delete</button>
+        <button onClick={() => { onView(staff); setOpen(false); }}>&#128065; View</button>
+        <button onClick={() => { onEdit(staff); setOpen(false); }}>&#9998; Edit</button>
+        <button className="danger" onClick={() => { onDelete(staff); setOpen(false); }}>&#128465; Delete</button>
       </div>
     </div>
   );
 }
 
 export default function StaffPage() {
-  const [activeTab, setActiveTab] = useState<'all' | StaffRole>('all');
+  const { tenant, loading: sessionLoading } = useSession();
 
-  const filtered = activeTab === 'all' ? STAFF : STAFF.filter((s) => s.role === activeTab);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<StaffTabKey>('all');
 
-  function handleView(name: string) {
-    alert(`View staff profile: ${name}`);
+  // Modal state
+  const [addOpen, setAddOpen] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<any>(null);
+
+  const fetchStaff = useCallback(async () => {
+    if (!tenant?.id) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/staff?tenant_id=${tenant.id}`);
+      if (res.ok) {
+        setStaffList(await res.json());
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [tenant?.id]);
+
+  useEffect(() => {
+    fetchStaff();
+  }, [fetchStaff]);
+
+  // Filtered data
+  const filtered = activeTab === 'all' ? staffList : staffList.filter((s) => s.role === activeTab);
+
+  // Counts for tabs
+  const allCount = staffList.length;
+  const driverCount = staffList.filter((s) => s.role === 'Driver').length;
+  const assistantCount = staffList.filter((s) => s.role === 'Assistant').length;
+  const ladyAttendantCount = staffList.filter((s) => s.role === 'Lady Attendant').length;
+
+  function handleView(staff: any) {
+    setSelectedStaff(staff);
+    setProfileOpen(true);
+  }
+
+  function handleEdit(staff: any) {
+    setEditData(staff);
+    setAddOpen(true);
+  }
+
+  async function handleDelete(staff: any) {
+    if (!confirm(`Delete ${staff.name}? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/staff/${staff.id}`, { method: 'DELETE' });
+      if (res.ok) fetchStaff();
+    } catch {
+      // ignore
+    }
+  }
+
+  function handleAddNew() {
+    setEditData(null);
+    setAddOpen(true);
+  }
+
+  function handleModalClose() {
+    setAddOpen(false);
+    setEditData(null);
+  }
+
+  function handleEditFromProfile(staff: any) {
+    setProfileOpen(false);
+    setSelectedStaff(null);
+    setEditData(staff);
+    setAddOpen(true);
+  }
+
+  if (sessionLoading || loading) {
+    return (
+      <div className="card">
+        <div className="card-body" style={{ padding: 40, textAlign: 'center', color: 'var(--bodytext)' }}>
+          Loading staff...
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3>Transport Staff</h3>
-        <button className="btn btn-primary btn-sm">+ Add Staff</button>
-      </div>
-      <div className="card-body">
-        {/* Tab Pills */}
-        <div className="tab-pills">
-          <button
-            className={`tab-pill${activeTab === 'all' ? ' active' : ''}`}
-            onClick={() => setActiveTab('all')}
-          >
-            All ({allCount})
-          </button>
-          <button
-            className={`tab-pill${activeTab === 'driver' ? ' active' : ''}`}
-            onClick={() => setActiveTab('driver')}
-          >
-            Drivers ({driverCount})
-          </button>
-          <button
-            className={`tab-pill${activeTab === 'assistant' ? ' active' : ''}`}
-            onClick={() => setActiveTab('assistant')}
-          >
-            Assistants ({assistantCount})
-          </button>
-          <button
-            className={`tab-pill${activeTab === 'lady-attendant' ? ' active' : ''}`}
-            onClick={() => setActiveTab('lady-attendant')}
-          >
-            Lady Attendants ({ladyAttendantCount})
-          </button>
+    <>
+      <div className="card">
+        <div className="card-header">
+          <h3>Transport Staff</h3>
+          <button className="btn btn-primary btn-sm" onClick={handleAddNew}>+ Add Staff</button>
         </div>
+        <div className="card-body">
+          {/* Tab Pills */}
+          <div className="tab-pills">
+            <button
+              className={`tab-pill${activeTab === 'all' ? ' active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All ({allCount})
+            </button>
+            <button
+              className={`tab-pill${activeTab === 'Driver' ? ' active' : ''}`}
+              onClick={() => setActiveTab('Driver')}
+            >
+              Drivers ({driverCount})
+            </button>
+            <button
+              className={`tab-pill${activeTab === 'Assistant' ? ' active' : ''}`}
+              onClick={() => setActiveTab('Assistant')}
+            >
+              Assistants ({assistantCount})
+            </button>
+            <button
+              className={`tab-pill${activeTab === 'Lady Attendant' ? ' active' : ''}`}
+              onClick={() => setActiveTab('Lady Attendant')}
+            >
+              Lady Attendants ({ladyAttendantCount})
+            </button>
+          </div>
 
-        {/* Staff Table */}
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Photo</th>
-                <th>Name</th>
-                <th>Father&apos;s Name</th>
-                <th>Role</th>
-                <th>DOB</th>
-                <th>Aadhar</th>
-                <th>License</th>
-                <th>License Expiry</th>
-                <th>Phone</th>
-                <th>Salary (&#8377;)</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((staff, idx) => (
-                <tr key={staff.id} data-role={staff.role}>
-                  <td>{idx + 1}</td>
-                  <td>
-                    <div
-                      className="avatar"
-                      style={{ background: staff.avatarBg, color: staff.avatarColor }}
-                    >
-                      {staff.initials}
-                    </div>
-                  </td>
-                  <td>
-                    <a className="clickable-link" onClick={() => handleView(staff.name)}>
-                      {staff.name}
-                    </a>
-                  </td>
-                  <td>{staff.fatherName}</td>
-                  <td>
-                    <span className={`badge ${staff.roleBadge}`}>{staff.roleLabel}</span>
-                  </td>
-                  <td>{staff.dob}</td>
-                  <td>
-                    <a className="clickable-link">{staff.aadhar}</a>
-                  </td>
-                  <td>
-                    {staff.license === '\u2014' ? (
-                      '\u2014'
-                    ) : (
-                      <a className="clickable-link">{staff.license}</a>
-                    )}
-                  </td>
-                  <td>
-                    {staff.licenseExpired ? (
-                      <span style={{ color: 'var(--error)', fontWeight: 600 }}>
-                        {staff.licenseExpiry}
-                      </span>
-                    ) : (
-                      staff.licenseExpiry
-                    )}
-                  </td>
-                  <td>{staff.phone}</td>
-                  <td>{staff.salary}</td>
-                  <td>
-                    <span className={`badge ${staff.statusBadge}`}>{staff.status}</span>
-                  </td>
-                  <td>
-                    <ActionMenu staffName={staff.name} onView={handleView} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Staff Table */}
+          {filtered.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--bodytext)' }}>
+              {staffList.length === 0
+                ? 'No staff found. Add your first staff member.'
+                : 'No staff in this category.'}
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Photo</th>
+                    <th>Name</th>
+                    <th>Father&apos;s Name</th>
+                    <th>Role</th>
+                    <th>DOB</th>
+                    <th>Aadhar</th>
+                    <th>License</th>
+                    <th>License Expiry</th>
+                    <th>Phone</th>
+                    <th>Salary (&#8377;)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((staff, idx) => {
+                    const colors = avatarColors(idx);
+                    const licenseExpired = staff.license_expiry && new Date(staff.license_expiry) < new Date();
+                    return (
+                      <tr key={staff.id} data-role={staff.role}>
+                        <td>{idx + 1}</td>
+                        <td>
+                          <div
+                            className="avatar"
+                            style={{ background: colors.bg, color: colors.color }}
+                          >
+                            {getInitials(staff.name || 'NA')}
+                          </div>
+                        </td>
+                        <td>
+                          <a className="clickable-link" onClick={() => handleView(staff)}>
+                            {staff.name}
+                          </a>
+                        </td>
+                        <td>{staff.father_name || '\u2014'}</td>
+                        <td>
+                          <span className={`badge ${roleBadge(staff.role)}`}>{staff.role || '\u2014'}</span>
+                        </td>
+                        <td>{staff.dob || '\u2014'}</td>
+                        <td>
+                          <a className="clickable-link">{staff.aadhar || '\u2014'}</a>
+                        </td>
+                        <td>
+                          {staff.license_no ? (
+                            <a className="clickable-link">{staff.license_no}</a>
+                          ) : (
+                            '\u2014'
+                          )}
+                        </td>
+                        <td>
+                          {licenseExpired ? (
+                            <span style={{ color: 'var(--error)', fontWeight: 600 }}>
+                              {staff.license_expiry}
+                            </span>
+                          ) : (
+                            staff.license_expiry || '\u2014'
+                          )}
+                        </td>
+                        <td>{staff.phone || '\u2014'}</td>
+                        <td>{staff.salary ? `\u20B9${Number(staff.salary).toLocaleString('en-IN')}` : '\u2014'}</td>
+                        <td>
+                          <span className="badge badge-success">{staff.status || 'Active'}</span>
+                        </td>
+                        <td>
+                          <ActionMenu
+                            staff={staff}
+                            onView={handleView}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Add / Edit Staff Modal */}
+      <AddStaffModal
+        isOpen={addOpen}
+        onClose={handleModalClose}
+        onSaved={fetchStaff}
+        tenantId={tenant?.id}
+        editData={editData}
+      />
+
+      {/* Staff Profile Modal */}
+      <StaffProfileModal
+        isOpen={profileOpen}
+        onClose={() => { setProfileOpen(false); setSelectedStaff(null); }}
+        staff={selectedStaff}
+        onEdit={handleEditFromProfile}
+      />
+    </>
   );
 }

@@ -1,23 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface AddStaffModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSaved?: () => void;
+  tenantId?: string;
+  editData?: any;
 }
 
-const BUSES = [
-  'GJ-01-TX-5501',
-  'GJ-01-TX-5502',
-  'GJ-01-TX-5503',
-  'GJ-01-TX-5504',
-  'GJ-01-TX-5505',
-  'GJ-01-TX-5507',
-];
-
-export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
+export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, editData }: AddStaffModalProps) {
   const [name, setName] = useState('');
   const [fatherName, setFatherName] = useState('');
   const [role, setRole] = useState('');
@@ -29,24 +25,90 @@ export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
   const [salary, setSalary] = useState('');
   const [policeVerification, setPoliceVerification] = useState('');
   const [assignedBus, setAssignedBus] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  function handleSave() {
-    // Will wire to API later
-    onClose();
+  // Populate form when editing
+  useEffect(() => {
+    if (editData) {
+      setName(editData.name || '');
+      setFatherName(editData.father_name || '');
+      setRole(editData.role || '');
+      setDob(editData.dob || '');
+      setPhone(editData.phone || '');
+      setAadhar(editData.aadhar || '');
+      setLicenseNo(editData.license_no || '');
+      setLicenseExpiry(editData.license_expiry || '');
+      setSalary(editData.salary?.toString() || '');
+      setPoliceVerification(editData.police_verification || '');
+      setAssignedBus(editData.assigned_bus || '');
+    } else {
+      setName('');
+      setFatherName('');
+      setRole('');
+      setDob('');
+      setPhone('');
+      setAadhar('');
+      setLicenseNo('');
+      setLicenseExpiry('');
+      setSalary('');
+      setPoliceVerification('');
+      setAssignedBus('');
+    }
+  }, [editData, isOpen]);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const payload: any = {
+        name: name.trim(),
+        father_name: fatherName || null,
+        role: role || null,
+        dob: dob || null,
+        phone: phone || null,
+        aadhar: aadhar || null,
+        license_no: licenseNo || null,
+        license_expiry: licenseExpiry || null,
+        salary: salary ? Number(salary) : null,
+        police_verification: policeVerification || null,
+        assigned_bus: assignedBus || null,
+      };
+
+      if (editData?.id) {
+        await fetch(`/api/staff/${editData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        payload.tenant_id = tenantId;
+        await fetch('/api/staff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+      onSaved?.();
+      onClose();
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add New Staff"
+      title={editData ? 'Edit Staff' : 'Add New Staff'}
       footer={
         <>
           <button className="btn btn-outline" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={handleSave}>
-            Save Staff
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : editData ? 'Update Staff' : 'Save Staff'}
           </button>
         </>
       }
@@ -77,9 +139,9 @@ export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
           <label className="form-label">Role</label>
           <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="">Select Role</option>
-            <option>Driver</option>
-            <option>Assistant</option>
-            <option>Lady Attendant</option>
+            <option value="Driver">Driver</option>
+            <option value="Assistant">Assistant</option>
+            <option value="Lady Attendant">Lady Attendant</option>
           </select>
         </div>
         <div className="form-group">
@@ -163,12 +225,12 @@ export default function AddStaffModal({ isOpen, onClose }: AddStaffModalProps) {
 
       <div className="form-group">
         <label className="form-label">Assigned Bus</label>
-        <select className="form-select" value={assignedBus} onChange={(e) => setAssignedBus(e.target.value)}>
-          <option value="">Select Bus</option>
-          {BUSES.map((b) => (
-            <option key={b}>{b}</option>
-          ))}
-        </select>
+        <input
+          className="form-input"
+          placeholder="e.g. GJ-01-TX-5501"
+          value={assignedBus}
+          onChange={(e) => setAssignedBus(e.target.value)}
+        />
       </div>
 
       <div className="form-row">

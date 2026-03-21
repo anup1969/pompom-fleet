@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient();
   const tenantId = request.nextUrl.searchParams.get('tenant_id');
   const date = request.nextUrl.searchParams.get('date');
+  const from = request.nextUrl.searchParams.get('from');
+  const to = request.nextUrl.searchParams.get('to');
 
   if (!tenantId) {
     return Response.json({ error: 'tenant_id is required' }, { status: 400 });
@@ -18,6 +20,8 @@ export async function GET(request: NextRequest) {
 
   if (date) {
     query = query.eq('date', date);
+  } else if (from && to) {
+    query = query.gte('date', from).lte('date', to);
   }
 
   const { data, error } = await query;

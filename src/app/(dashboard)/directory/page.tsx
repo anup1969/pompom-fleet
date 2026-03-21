@@ -1,158 +1,405 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSession } from '@/lib/session-context';
+import Modal from '@/components/Modal';
 
-/* ──────────────── Demo Data ──────────────── */
+/* ──────────────── Types ──────────────── */
 interface Contact {
-  id: number;
+  id: string;
   name: string;
   phone: string;
-  phoneRaw: string;
   category: string;
-  catBadge: string;
   company: string;
   address: string;
-  isStaff: boolean;
+  is_staff: boolean;
 }
 
-const DEMO_CONTACTS: Contact[] = [
-  { id: 1, name: 'Ramesh Solanki', phone: '98250 12001', phoneRaw: '9825012001', category: 'Staff', catBadge: 'badge-primary', company: 'Driver \u2014 Bus #1', address: 'Isanpur, Ahmedabad', isStaff: true },
-  { id: 2, name: 'Mukesh Khatri', phone: '98250 12002', phoneRaw: '9825012002', category: 'Staff', catBadge: 'badge-primary', company: 'Driver \u2014 Bus #2', address: 'Narol, Ahmedabad', isStaff: true },
-  { id: 3, name: 'Jayesh Patel', phone: '98250 12003', phoneRaw: '9825012003', category: 'Staff', catBadge: 'badge-primary', company: 'Driver \u2014 Bus #3', address: 'Maninagar, Ahmedabad', isStaff: true },
-  { id: 4, name: 'Arjun Sharma', phone: '98250 12004', phoneRaw: '9825012004', category: 'Staff', catBadge: 'badge-primary', company: 'Assistant \u2014 Bus #1', address: 'Vastral, Ahmedabad', isStaff: true },
-  { id: 5, name: 'Vijay Desai', phone: '98250 12005', phoneRaw: '9825012005', category: 'Staff', catBadge: 'badge-primary', company: 'Assistant \u2014 Bus #3', address: 'Odhav, Ahmedabad', isStaff: true },
-  { id: 6, name: 'Savita Mehta', phone: '98250 12006', phoneRaw: '9825012006', category: 'Staff', catBadge: 'badge-primary', company: 'Lady Attendant \u2014 Bus #1', address: 'Isanpur, Ahmedabad', isStaff: true },
-  { id: 7, name: 'Kavita Joshi', phone: '98250 12007', phoneRaw: '9825012007', category: 'Staff', catBadge: 'badge-primary', company: 'Lady Attendant \u2014 Bus #2', address: 'Vastral, Ahmedabad', isStaff: true },
-  { id: 8, name: 'Suresh Mehta', phone: '98250 34505', phoneRaw: '9825034505', category: 'RTO Agent', catBadge: 'badge-accent', company: 'Mehta Consultancy', address: 'Subhash Bridge, Ahmedabad', isStaff: false },
-  { id: 9, name: 'Dinesh Vora', phone: '98250 34510', phoneRaw: '9825034510', category: 'RTO Agent', catBadge: 'badge-accent', company: 'Vora RTO Services', address: 'Ashram Road, Ahmedabad', isStaff: false },
-  { id: 10, name: 'Hemant Joshi', phone: '98250 34504', phoneRaw: '9825034504', category: 'Insurance', catBadge: 'badge-success', company: 'New India Assurance Co.', address: 'Navrangpura, Ahmedabad', isStaff: false },
-  { id: 11, name: 'Rajesh Sharma', phone: '98250 34501', phoneRaw: '9825034501', category: 'Mechanic', catBadge: 'badge-info', company: 'Sharma Auto Works', address: 'Nr. Isanpur Cross Rd, Ahmedabad', isStaff: false },
-  { id: 12, name: 'Kamlesh Rathod', phone: '98250 34511', phoneRaw: '9825034511', category: 'Mechanic', catBadge: 'badge-info', company: 'Rathod Diesel Garage', address: 'Narol Industrial Area, Ahmedabad', isStaff: false },
-  { id: 13, name: 'Bharat Gohil', phone: '98250 34506', phoneRaw: '9825034506', category: 'Towing', catBadge: 'badge-error', company: 'City Towing Pvt Ltd', address: 'Paldi, Ahmedabad', isStaff: false },
-  { id: 14, name: 'Nilesh Patel', phone: '98250 34503', phoneRaw: '9825034503', category: 'Spare Parts', catBadge: 'badge-primary', company: 'Patel Tyre House', address: 'Narol Circle, Ahmedabad', isStaff: false },
-  { id: 15, name: 'Vikas Trivedi', phone: '98250 34512', phoneRaw: '9825034512', category: 'Other', catBadge: 'badge-warning', company: 'Trivedi Electricals', address: 'Maninagar, Ahmedabad', isStaff: false },
-];
+const CAT_BADGE: Record<string, string> = {
+  Staff: 'badge-primary',
+  'RTO Agent': 'badge-accent',
+  Insurance: 'badge-success',
+  Mechanic: 'badge-info',
+  Towing: 'badge-error',
+  'Spare Parts': 'badge-primary',
+  Other: 'badge-warning',
+};
 
-const CATEGORY_TABS = [
-  { key: 'all', label: 'All (15)' },
-  { key: 'Staff', label: 'Staff (7)' },
-  { key: 'RTO Agent', label: 'RTO Agent (2)' },
-  { key: 'Insurance', label: 'Insurance (1)' },
-  { key: 'Mechanic', label: 'Mechanic (2)' },
-  { key: 'Towing', label: 'Towing (1)' },
-  { key: 'Spare Parts', label: 'Spare Parts (1)' },
-  { key: 'Other', label: 'Other (1)' },
-];
+const CONTACT_CATEGORIES = ['Staff', 'RTO Agent', 'Insurance', 'Mechanic', 'Towing', 'Spare Parts', 'Other'];
 
+/* ─── Action Menu Component ─── */
+function ActionMenu({
+  isStaff,
+  onEdit,
+  onDelete,
+}: {
+  isStaff: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div className="action-wrap" ref={ref}>
+      <button className="btn-icon" onClick={() => setOpen(!open)}>
+        &#8942;
+      </button>
+      <div className={`action-menu${open ? ' show' : ''}`}>
+        {isStaff && (
+          <button onClick={() => setOpen(false)}>&#128065; View</button>
+        )}
+        <button
+          onClick={() => {
+            onEdit();
+            setOpen(false);
+          }}
+        >
+          &#9998; Edit
+        </button>
+        {!isStaff && (
+          <button
+            className="danger"
+            onClick={() => {
+              onDelete();
+              setOpen(false);
+            }}
+          >
+            &#128465; Delete
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────── Page ──────────────── */
 export default function DirectoryPage() {
+  const { tenant } = useSession();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const filtered = DEMO_CONTACTS.filter((c) => {
+  /* Form fields */
+  const [formName, setFormName] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formCategory, setFormCategory] = useState('');
+  const [formCompany, setFormCompany] = useState('');
+  const [formAddress, setFormAddress] = useState('');
+
+  /* Fetch */
+  async function fetchContacts() {
+    if (!tenant) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/directory?tenant_id=${tenant.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setContacts(data);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant?.id]);
+
+  /* Category counts */
+  function categoryCount(cat: string) {
+    if (cat === 'all') return contacts.length;
+    return contacts.filter((c) => c.category === cat).length;
+  }
+
+  const categories = ['all', ...Array.from(new Set(contacts.map((c) => c.category).filter(Boolean)))];
+
+  /* Filtered list */
+  const filtered = contacts.filter((c) => {
     if (catFilter !== 'all' && c.category !== catFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       return (
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q) ||
-        c.category.toLowerCase().includes(q) ||
-        c.company.toLowerCase().includes(q)
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.phone || '').includes(q) ||
+        (c.category || '').toLowerCase().includes(q) ||
+        (c.company || '').toLowerCase().includes(q)
       );
     }
     return true;
   });
 
+  /* Reset form */
+  function resetForm() {
+    setFormName('');
+    setFormPhone('');
+    setFormCategory('');
+    setFormCompany('');
+    setFormAddress('');
+    setEditingContact(null);
+  }
+
+  /* Open for Add */
+  function openAdd() {
+    resetForm();
+    setModalOpen(true);
+  }
+
+  /* Open for Edit */
+  function openEdit(c: Contact) {
+    setEditingContact(c);
+    setFormName(c.name || '');
+    setFormPhone(c.phone || '');
+    setFormCategory(c.category || '');
+    setFormCompany(c.company || '');
+    setFormAddress(c.address || '');
+    setModalOpen(true);
+  }
+
+  /* Save */
+  async function handleSave() {
+    if (!tenant || !formName.trim()) return;
+    setSaving(true);
+    try {
+      const payload = {
+        tenant_id: tenant.id,
+        name: formName.trim(),
+        phone: formPhone.trim(),
+        category: formCategory,
+        company: formCompany.trim(),
+        address: formAddress.trim(),
+        is_staff: false,
+      };
+
+      if (editingContact) {
+        await fetch(`/api/directory/${editingContact.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await fetch('/api/directory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      setModalOpen(false);
+      resetForm();
+      fetchContacts();
+    } catch {
+      /* ignore */
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* Delete */
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this contact?')) return;
+    await fetch(`/api/directory/${id}`, { method: 'DELETE' });
+    fetchContacts();
+  }
+
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3>Phone Directory</h3>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <input
-            className="form-input"
-            type="text"
-            placeholder="Search contacts..."
-            style={{ width: 220, height: 38 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button className="btn btn-primary btn-sm">+ Add Contact</button>
-        </div>
-      </div>
-      <div className="card-body">
-        {/* Tab Pill Filters */}
-        <div className="tab-pills">
-          {CATEGORY_TABS.map((t) => (
-            <button
-              key={t.key}
-              className={`tab-pill${catFilter === t.key ? ' active' : ''}`}
-              onClick={() => setCatFilter(t.key)}
-            >
-              {t.label}
+    <>
+      <div className="card">
+        <div className="card-header">
+          <h3>Phone Directory</h3>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <input
+              className="form-input"
+              type="text"
+              placeholder="Search contacts..."
+              style={{ width: 220, height: 38 }}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button className="btn btn-primary btn-sm" onClick={openAdd}>
+              + Add Contact
             </button>
-          ))}
+          </div>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Category</th>
-                <th>Company / Bus</th>
-                <th>Address</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.id}</td>
-                  <td>
-                    {c.isStaff ? (
-                      <a className="clickable-link">{c.name}</a>
-                    ) : (
-                      c.name
-                    )}
-                  </td>
-                  <td>
-                    <a href={`tel:+91${c.phoneRaw}`} style={{ color: 'var(--success)', fontWeight: 500 }}>
-                      {c.phone}
-                    </a>
-                  </td>
-                  <td>
-                    <span className={`badge ${c.catBadge}`}>{c.category}</span>
-                  </td>
-                  <td>{c.company}</td>
-                  <td>{c.address}</td>
-                  <td>
-                    <div className="action-wrap">
-                      <button
-                        className="btn-icon"
-                        onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}
-                      >
-                        &#8942;
-                      </button>
-                      <div className={`action-menu${openMenu === c.id ? ' show' : ''}`}>
-                        {c.isStaff && (
-                          <button onClick={() => setOpenMenu(null)}>{'\uD83D\uDC41'} View</button>
+        <div className="card-body">
+          {/* Tab Pill Filters */}
+          <div className="tab-pills">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                className={`tab-pill${catFilter === cat ? ' active' : ''}`}
+                onClick={() => setCatFilter(cat)}
+              >
+                {cat === 'all' ? 'All' : cat} ({categoryCount(cat)})
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--bodytext)' }}>
+              Loading contacts...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--bodytext)' }}>
+              {contacts.length === 0
+                ? 'No contacts yet. Click "+ Add Contact" to create one.'
+                : 'No contacts match your search.'}
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Category</th>
+                    <th>Company / Bus</th>
+                    <th>Address</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((c, idx) => (
+                    <tr key={c.id}>
+                      <td>{idx + 1}</td>
+                      <td>
+                        {c.is_staff ? (
+                          <a className="clickable-link">{c.name}</a>
+                        ) : (
+                          c.name
                         )}
-                        <button onClick={() => setOpenMenu(null)}>&#9998; Edit</button>
-                        {!c.isStaff && (
-                          <button className="danger" onClick={() => setOpenMenu(null)}>
-                            {'\uD83D\uDDD1'} Delete
-                          </button>
+                      </td>
+                      <td>
+                        {c.phone ? (
+                          <a
+                            href={`tel:+91${c.phone.replace(/\s/g, '')}`}
+                            style={{ color: 'var(--success)', fontWeight: 500 }}
+                          >
+                            {c.phone}
+                          </a>
+                        ) : (
+                          '\u2014'
                         )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      </td>
+                      <td>
+                        <span className={`badge ${CAT_BADGE[c.category] || 'badge-info'}`}>
+                          {c.category || '\u2014'}
+                        </span>
+                      </td>
+                      <td>{c.company || '\u2014'}</td>
+                      <td>{c.address || '\u2014'}</td>
+                      <td>
+                        <ActionMenu
+                          isStaff={c.is_staff}
+                          onEdit={() => openEdit(c)}
+                          onDelete={() => handleDelete(c.id)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Add / Edit Modal */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          resetForm();
+        }}
+        title={editingContact ? 'Edit Contact' : 'Add New Contact'}
+        footer={
+          <>
+            <button
+              className="btn btn-outline"
+              onClick={() => {
+                setModalOpen(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : editingContact ? 'Update Contact' : 'Save Contact'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Name *</label>
+            <input
+              className="form-input"
+              placeholder="e.g. Rajesh Sharma"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Phone</label>
+            <input
+              className="form-input"
+              placeholder="e.g. 98250 34501"
+              value={formPhone}
+              onChange={(e) => setFormPhone(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Category</label>
+            <select
+              className="form-select"
+              value={formCategory}
+              onChange={(e) => setFormCategory(e.target.value)}
+            >
+              <option value="">Select Category</option>
+              {CONTACT_CATEGORIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Company / Bus</label>
+            <input
+              className="form-input"
+              placeholder="e.g. Sharma Auto Works"
+              value={formCompany}
+              onChange={(e) => setFormCompany(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Address</label>
+          <textarea
+            className="form-input"
+            placeholder="Full address..."
+            value={formAddress}
+            onChange={(e) => setFormAddress(e.target.value)}
+            rows={2}
+          />
+        </div>
+      </Modal>
+    </>
   );
 }

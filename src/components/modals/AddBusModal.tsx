@@ -1,11 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface AddBusModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSaved?: () => void;
+  tenantId?: string;
+  editData?: any;
 }
 
 interface CustomField {
@@ -14,7 +19,7 @@ interface CustomField {
   value: string;
 }
 
-export default function AddBusModal({ isOpen, onClose }: AddBusModalProps) {
+export default function AddBusModal({ isOpen, onClose, onSaved, tenantId, editData }: AddBusModalProps) {
   const [vehicleNo, setVehicleNo] = useState('');
   const [makeModel, setMakeModel] = useState('');
   const [chassisNo, setChassisNo] = useState('');
@@ -25,6 +30,34 @@ export default function AddBusModal({ isOpen, onClose }: AddBusModalProps) {
   const [pucDue, setPucDue] = useState('');
   const [nextServiceKm, setNextServiceKm] = useState('');
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editData) {
+      setVehicleNo(editData.vehicle_no || '');
+      setMakeModel(editData.make_model || '');
+      setChassisNo(editData.chassis_no || '');
+      setEngineNo(editData.engine_no || '');
+      setSeats(editData.seats?.toString() || '');
+      setOdometer(editData.odometer?.toString() || '');
+      setPassingDue(editData.passing_due || '');
+      setPucDue(editData.puc_due || '');
+      setNextServiceKm(editData.next_service_km?.toString() || '');
+      setCustomFields([]);
+    } else {
+      setVehicleNo('');
+      setMakeModel('');
+      setChassisNo('');
+      setEngineNo('');
+      setSeats('');
+      setOdometer('');
+      setPassingDue('');
+      setPucDue('');
+      setNextServiceKm('');
+      setCustomFields([]);
+    }
+  }, [editData, isOpen]);
 
   function addCustomField() {
     setCustomFields([...customFields, { id: Date.now(), label: '', value: '' }]);
@@ -38,23 +71,59 @@ export default function AddBusModal({ isOpen, onClose }: AddBusModalProps) {
     setCustomFields(customFields.map((f) => (f.id === id ? { ...f, [key]: val } : f)));
   }
 
-  function handleSave() {
-    // Will wire to API later
-    onClose();
+  async function handleSave() {
+    if (!vehicleNo.trim()) return;
+    setSaving(true);
+    try {
+      const payload: any = {
+        vehicle_no: vehicleNo.trim(),
+        make_model: makeModel || null,
+        chassis_no: chassisNo || null,
+        engine_no: engineNo || null,
+        seats: seats ? Number(seats) : null,
+        odometer: odometer ? Number(odometer) : null,
+        passing_due: passingDue || null,
+        puc_due: pucDue || null,
+        next_service_km: nextServiceKm ? Number(nextServiceKm) : null,
+      };
+
+      if (editData?.id) {
+        // Update existing
+        await fetch(`/api/buses/${editData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // Create new
+        payload.tenant_id = tenantId;
+        await fetch('/api/buses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+      onSaved?.();
+      onClose();
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add New Bus"
+      title={editData ? 'Edit Bus' : 'Add New Bus'}
       footer={
         <>
           <button className="btn btn-outline" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={handleSave}>
-            Save Bus
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : editData ? 'Update Bus' : 'Save Bus'}
           </button>
         </>
       }

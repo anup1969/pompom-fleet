@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('fuel_logs')
-    .select('*')
+    .select(`
+      *,
+      buses ( vehicle_no )
+    `)
     .eq('tenant_id', tenantId)
     .order('date', { ascending: false });
 
@@ -19,7 +22,14 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  return Response.json(data);
+  // Flatten the joined bus field
+  const results = (data ?? []).map((row) => ({
+    ...row,
+    vehicle_no: row.buses?.vehicle_no ?? null,
+    buses: undefined,
+  }));
+
+  return Response.json(results);
 }
 
 export async function POST(request: NextRequest) {

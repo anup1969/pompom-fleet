@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from '@/lib/session-context';
 
 /* ═══════════════════════════════════════════════════
-   Tab definitions & demo data
+   Tab definitions & types
    ═══════════════════════════════════════════════════ */
 
 type TabKey = 'expense-heads' | 'vehicle-makes' | 'staff-roles' | 'vendor-categories' | 'attendance-rules';
 
 interface NameItem {
-  id: number;
+  id: string;
   name: string;
 }
 
 interface RuleItem {
-  id: number;
-  key: string;
-  value: string;
+  id: string;
+  rule_key: string;
+  rule_value: string;
 }
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -27,48 +28,13 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'attendance-rules', label: 'Attendance Rules' },
 ];
 
-const INITIAL_EXPENSE_HEADS: NameItem[] = [
-  { id: 1, name: 'Diesel' },
-  { id: 2, name: 'Repairs' },
-  { id: 3, name: 'Tyres' },
-  { id: 4, name: 'Insurance' },
-  { id: 5, name: 'Salary' },
-  { id: 6, name: 'Washing' },
-  { id: 7, name: 'Misc' },
-];
-
-const INITIAL_VEHICLE_MAKES: NameItem[] = [
-  { id: 1, name: 'Tata' },
-  { id: 2, name: 'Force' },
-  { id: 3, name: 'Eicher' },
-  { id: 4, name: 'Ashok Leyland' },
-  { id: 5, name: 'BharatBenz' },
-  { id: 6, name: 'Mahindra' },
-];
-
-const INITIAL_STAFF_ROLES: NameItem[] = [
-  { id: 1, name: 'Driver' },
-  { id: 2, name: 'Assistant' },
-  { id: 3, name: 'Lady Attendant' },
-  { id: 4, name: 'Supervisor' },
-];
-
-const INITIAL_VENDOR_CATEGORIES: NameItem[] = [
-  { id: 1, name: 'Fuel Station' },
-  { id: 2, name: 'Mechanic' },
-  { id: 3, name: 'Towing' },
-  { id: 4, name: 'Spare Parts' },
-  { id: 5, name: 'Body Work' },
-  { id: 6, name: 'Electrical' },
-  { id: 7, name: 'Insurance Agent' },
-];
-
-const INITIAL_ATTENDANCE_RULES: RuleItem[] = [
-  { id: 1, key: 'Max CL per month', value: '2' },
-  { id: 2, key: 'HD counts as', value: '0.5' },
-  { id: 3, key: 'Week off day', value: 'Sunday' },
-  { id: 4, key: 'Late mark threshold', value: '15 min' },
-];
+const TAB_ENDPOINTS: Record<TabKey, string> = {
+  'expense-heads': '/api/expense-heads',
+  'vehicle-makes': '/api/masters/vehicle-makes',
+  'staff-roles': '/api/masters/staff-roles',
+  'vendor-categories': '/api/masters/vendor-categories',
+  'attendance-rules': '/api/masters/attendance-rules',
+};
 
 /* ═══════════════════════════════════════════════════
    Inline-editable Name table
@@ -76,16 +42,18 @@ const INITIAL_ATTENDANCE_RULES: RuleItem[] = [
 
 function NameTable({
   items,
+  loading,
   onUpdate,
   onDelete,
   onAdd,
 }: {
   items: NameItem[];
-  onUpdate: (id: number, name: string) => void;
-  onDelete: (id: number) => void;
+  loading: boolean;
+  onUpdate: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
   onAdd: () => void;
 }) {
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
   function startEdit(item: NameItem) {
@@ -115,69 +83,79 @@ function NameTable({
         </button>
       </div>
       <div className="card-body" style={{ padding: 0 }}>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 50 }}>#</th>
-                <th>Name</th>
-                <th style={{ width: 160 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <tr key={item.id}>
-                  <td>{idx + 1}</td>
-                  <td>
-                    {editingId === item.id ? (
-                      <input
-                        className="form-input"
-                        style={{ height: 34, fontSize: 13 }}
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveEdit();
-                          if (e.key === 'Escape') cancelEdit();
-                        }}
-                        autoFocus
-                      />
-                    ) : (
-                      item.name
-                    )}
-                  </td>
-                  <td>
-                    {editingId === item.id ? (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-success btn-sm" onClick={saveEdit}>
-                          Save
-                        </button>
-                        <button className="btn btn-outline btn-sm" onClick={cancelEdit}>
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => startEdit(item)}>
-                          &#9998; Edit
-                        </button>
-                        <button className="btn btn-outline btn-sm" style={{ color: 'var(--error)', borderColor: 'var(--error)' }} onClick={() => onDelete(item.id)}>
-                          &#128465; Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && (
+        {loading ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--bodytext)' }}>
+            Loading...
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', color: 'var(--bodytext)', padding: 24 }}>
-                    No items yet. Click &quot;+ Add&quot; to create one.
-                  </td>
+                  <th style={{ width: 50 }}>#</th>
+                  <th>Name</th>
+                  <th style={{ width: 160 }}>Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <tr key={item.id}>
+                    <td>{idx + 1}</td>
+                    <td>
+                      {editingId === item.id ? (
+                        <input
+                          className="form-input"
+                          style={{ height: 34, fontSize: 13 }}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEdit();
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        item.name
+                      )}
+                    </td>
+                    <td>
+                      {editingId === item.id ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-success btn-sm" onClick={saveEdit}>
+                            Save
+                          </button>
+                          <button className="btn btn-outline btn-sm" onClick={cancelEdit}>
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-outline btn-sm" onClick={() => startEdit(item)}>
+                            &#9998; Edit
+                          </button>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            style={{ color: 'var(--error)', borderColor: 'var(--error)' }}
+                            onClick={() => onDelete(item.id)}
+                          >
+                            &#128465; Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {!loading && items.length === 0 && (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'center', color: 'var(--bodytext)', padding: 24 }}>
+                      No items yet. Click &quot;+ Add&quot; to create one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   );
@@ -189,23 +167,25 @@ function NameTable({
 
 function RuleTable({
   items,
+  loading,
   onUpdate,
   onDelete,
   onAdd,
 }: {
   items: RuleItem[];
-  onUpdate: (id: number, key: string, value: string) => void;
-  onDelete: (id: number) => void;
+  loading: boolean;
+  onUpdate: (id: string, key: string, value: string) => void;
+  onDelete: (id: string) => void;
   onAdd: () => void;
 }) {
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editKey, setEditKey] = useState('');
   const [editValue, setEditValue] = useState('');
 
   function startEdit(item: RuleItem) {
     setEditingId(item.id);
-    setEditKey(item.key);
-    setEditValue(item.value);
+    setEditKey(item.rule_key);
+    setEditValue(item.rule_value);
   }
 
   function saveEdit() {
@@ -228,82 +208,92 @@ function RuleTable({
         </button>
       </div>
       <div className="card-body" style={{ padding: 0 }}>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 50 }}>#</th>
-                <th>Key</th>
-                <th>Value</th>
-                <th style={{ width: 160 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <tr key={item.id}>
-                  <td>{idx + 1}</td>
-                  <td>
-                    {editingId === item.id ? (
-                      <input
-                        className="form-input"
-                        style={{ height: 34, fontSize: 13 }}
-                        value={editKey}
-                        onChange={(e) => setEditKey(e.target.value)}
-                        autoFocus
-                      />
-                    ) : (
-                      item.key
-                    )}
-                  </td>
-                  <td>
-                    {editingId === item.id ? (
-                      <input
-                        className="form-input"
-                        style={{ height: 34, fontSize: 13 }}
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveEdit();
-                          if (e.key === 'Escape') cancelEdit();
-                        }}
-                      />
-                    ) : (
-                      <span style={{ fontWeight: 600 }}>{item.value}</span>
-                    )}
-                  </td>
-                  <td>
-                    {editingId === item.id ? (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-success btn-sm" onClick={saveEdit}>
-                          Save
-                        </button>
-                        <button className="btn btn-outline btn-sm" onClick={cancelEdit}>
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => startEdit(item)}>
-                          &#9998; Edit
-                        </button>
-                        <button className="btn btn-outline btn-sm" style={{ color: 'var(--error)', borderColor: 'var(--error)' }} onClick={() => onDelete(item.id)}>
-                          &#128465; Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && (
+        {loading ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--bodytext)' }}>
+            Loading...
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--bodytext)', padding: 24 }}>
-                    No rules yet. Click &quot;+ Add Rule&quot; to create one.
-                  </td>
+                  <th style={{ width: 50 }}>#</th>
+                  <th>Key</th>
+                  <th>Value</th>
+                  <th style={{ width: 160 }}>Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {items.map((item, idx) => (
+                  <tr key={item.id}>
+                    <td>{idx + 1}</td>
+                    <td>
+                      {editingId === item.id ? (
+                        <input
+                          className="form-input"
+                          style={{ height: 34, fontSize: 13 }}
+                          value={editKey}
+                          onChange={(e) => setEditKey(e.target.value)}
+                          autoFocus
+                        />
+                      ) : (
+                        item.rule_key
+                      )}
+                    </td>
+                    <td>
+                      {editingId === item.id ? (
+                        <input
+                          className="form-input"
+                          style={{ height: 34, fontSize: 13 }}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEdit();
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontWeight: 600 }}>{item.rule_value}</span>
+                      )}
+                    </td>
+                    <td>
+                      {editingId === item.id ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-success btn-sm" onClick={saveEdit}>
+                            Save
+                          </button>
+                          <button className="btn btn-outline btn-sm" onClick={cancelEdit}>
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-outline btn-sm" onClick={() => startEdit(item)}>
+                            &#9998; Edit
+                          </button>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            style={{ color: 'var(--error)', borderColor: 'var(--error)' }}
+                            onClick={() => onDelete(item.id)}
+                          >
+                            &#128465; Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {!loading && items.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', color: 'var(--bodytext)', padding: 24 }}>
+                      No rules yet. Click &quot;+ Add Rule&quot; to create one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   );
@@ -314,26 +304,160 @@ function RuleTable({
    ═══════════════════════════════════════════════════ */
 
 export default function MastersPage() {
+  const { tenant } = useSession();
   const [activeTab, setActiveTab] = useState<TabKey>('expense-heads');
 
   /* ── State for each tab ── */
-  const [expenseHeads, setExpenseHeads] = useState<NameItem[]>(INITIAL_EXPENSE_HEADS);
-  const [vehicleMakes, setVehicleMakes] = useState<NameItem[]>(INITIAL_VEHICLE_MAKES);
-  const [staffRoles, setStaffRoles] = useState<NameItem[]>(INITIAL_STAFF_ROLES);
-  const [vendorCategories, setVendorCategories] = useState<NameItem[]>(INITIAL_VENDOR_CATEGORIES);
-  const [attendanceRules, setAttendanceRules] = useState<RuleItem[]>(INITIAL_ATTENDANCE_RULES);
+  const [expenseHeads, setExpenseHeads] = useState<NameItem[]>([]);
+  const [vehicleMakes, setVehicleMakes] = useState<NameItem[]>([]);
+  const [staffRoles, setStaffRoles] = useState<NameItem[]>([]);
+  const [vendorCategories, setVendorCategories] = useState<NameItem[]>([]);
+  const [attendanceRules, setAttendanceRules] = useState<RuleItem[]>([]);
 
-  /* ── Generic helpers for NameItem lists ── */
-  const makeNameHandlers = useCallback(
-    (items: NameItem[], setItems: React.Dispatch<React.SetStateAction<NameItem[]>>) => ({
-      onUpdate: (id: number, name: string) =>
-        setItems(items.map((i) => (i.id === id ? { ...i, name } : i))),
-      onDelete: (id: number) => setItems(items.filter((i) => i.id !== id)),
-      onAdd: () =>
-        setItems([...items, { id: Date.now(), name: 'New Item' }]),
-    }),
-    [],
+  /* ── Loading per tab ── */
+  const [loadingMap, setLoadingMap] = useState<Record<TabKey, boolean>>({
+    'expense-heads': true,
+    'vehicle-makes': true,
+    'staff-roles': true,
+    'vendor-categories': true,
+    'attendance-rules': true,
+  });
+
+  /* ── Generic fetch for name-based masters ── */
+  const fetchNameList = useCallback(
+    async (tabKey: TabKey, setter: React.Dispatch<React.SetStateAction<NameItem[]>>) => {
+      if (!tenant) return;
+      setLoadingMap((prev) => ({ ...prev, [tabKey]: true }));
+      try {
+        const res = await fetch(`${TAB_ENDPOINTS[tabKey]}?tenant_id=${tenant.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setter(data);
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setLoadingMap((prev) => ({ ...prev, [tabKey]: false }));
+      }
+    },
+    [tenant],
   );
+
+  /* ── Fetch attendance rules ── */
+  const fetchRules = useCallback(async () => {
+    if (!tenant) return;
+    setLoadingMap((prev) => ({ ...prev, 'attendance-rules': true }));
+    try {
+      const res = await fetch(`${TAB_ENDPOINTS['attendance-rules']}?tenant_id=${tenant.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAttendanceRules(data);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMap((prev) => ({ ...prev, 'attendance-rules': false }));
+    }
+  }, [tenant]);
+
+  /* Initial fetch for all tabs */
+  useEffect(() => {
+    if (!tenant) return;
+    fetchNameList('expense-heads', setExpenseHeads);
+    fetchNameList('vehicle-makes', setVehicleMakes);
+    fetchNameList('staff-roles', setStaffRoles);
+    fetchNameList('vendor-categories', setVendorCategories);
+    fetchRules();
+  }, [tenant, fetchNameList, fetchRules]);
+
+  /* ── CRUD helpers for name items ── */
+  function makeNameHandlers(
+    tabKey: TabKey,
+    setter: React.Dispatch<React.SetStateAction<NameItem[]>>,
+  ) {
+    const endpoint = TAB_ENDPOINTS[tabKey];
+
+    return {
+      onUpdate: async (id: string, name: string) => {
+        // For expense-heads, use [id] route; for masters/*, use DELETE+POST pattern or PUT
+        // The expense-heads has a [id]/route.ts with PUT. Masters use the collection route.
+        // Let's check: expense-heads has [id]/route.ts, the masters routes have DELETE on collection.
+        // For expense-heads: PUT /api/expense-heads/[id]
+        // For masters/*: no [id] route, so we do delete + re-create.
+        if (tabKey === 'expense-heads') {
+          await fetch(`${endpoint}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+          });
+        } else {
+          // Delete old, create new
+          await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+          await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenant_id: tenant!.id, name }),
+          });
+        }
+        fetchNameList(tabKey, setter);
+      },
+      onDelete: async (id: string) => {
+        if (!confirm('Delete this item?')) return;
+        if (tabKey === 'expense-heads') {
+          await fetch(`${endpoint}/${id}`, { method: 'DELETE' });
+        } else {
+          await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+        }
+        fetchNameList(tabKey, setter);
+      },
+      onAdd: async () => {
+        const name = prompt('Enter name:');
+        if (!name || !name.trim() || !tenant) return;
+        await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenant_id: tenant.id, name: name.trim() }),
+        });
+        fetchNameList(tabKey, setter);
+      },
+    };
+  }
+
+  /* ── CRUD helpers for attendance rules ── */
+  const ruleHandlers = {
+    onUpdate: async (id: string, key: string, value: string) => {
+      if (!tenant) return;
+      const endpoint = TAB_ENDPOINTS['attendance-rules'];
+      // Delete old, upsert new
+      await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenant.id, rule_key: key, rule_value: value }),
+      });
+      fetchRules();
+    },
+    onDelete: async (id: string) => {
+      if (!confirm('Delete this rule?')) return;
+      const endpoint = TAB_ENDPOINTS['attendance-rules'];
+      await fetch(`${endpoint}?id=${id}`, { method: 'DELETE' });
+      fetchRules();
+    },
+    onAdd: async () => {
+      if (!tenant) return;
+      const key = prompt('Rule key:');
+      if (!key || !key.trim()) return;
+      const value = prompt('Rule value:');
+      if (!value || !value.trim()) return;
+      const endpoint = TAB_ENDPOINTS['attendance-rules'];
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenant.id, rule_key: key.trim(), rule_value: value.trim() }),
+      });
+      fetchRules();
+    },
+  };
 
   return (
     <div className="card">
@@ -359,41 +483,40 @@ export default function MastersPage() {
           {activeTab === 'expense-heads' && (
             <NameTable
               items={expenseHeads}
-              {...makeNameHandlers(expenseHeads, setExpenseHeads)}
+              loading={loadingMap['expense-heads']}
+              {...makeNameHandlers('expense-heads', setExpenseHeads)}
             />
           )}
 
           {activeTab === 'vehicle-makes' && (
             <NameTable
               items={vehicleMakes}
-              {...makeNameHandlers(vehicleMakes, setVehicleMakes)}
+              loading={loadingMap['vehicle-makes']}
+              {...makeNameHandlers('vehicle-makes', setVehicleMakes)}
             />
           )}
 
           {activeTab === 'staff-roles' && (
             <NameTable
               items={staffRoles}
-              {...makeNameHandlers(staffRoles, setStaffRoles)}
+              loading={loadingMap['staff-roles']}
+              {...makeNameHandlers('staff-roles', setStaffRoles)}
             />
           )}
 
           {activeTab === 'vendor-categories' && (
             <NameTable
               items={vendorCategories}
-              {...makeNameHandlers(vendorCategories, setVendorCategories)}
+              loading={loadingMap['vendor-categories']}
+              {...makeNameHandlers('vendor-categories', setVendorCategories)}
             />
           )}
 
           {activeTab === 'attendance-rules' && (
             <RuleTable
               items={attendanceRules}
-              onUpdate={(id, key, value) =>
-                setAttendanceRules(attendanceRules.map((r) => (r.id === id ? { ...r, key, value } : r)))
-              }
-              onDelete={(id) => setAttendanceRules(attendanceRules.filter((r) => r.id !== id))}
-              onAdd={() =>
-                setAttendanceRules([...attendanceRules, { id: Date.now(), key: 'New Rule', value: '' }])
-              }
+              loading={loadingMap['attendance-rules']}
+              {...ruleHandlers}
             />
           )}
         </div>
