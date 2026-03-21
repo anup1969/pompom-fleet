@@ -14,6 +14,7 @@ export function proxy(request: NextRequest) {
   const publicPaths = [
     '/login',
     '/api/auth/',
+    '/api/seed',
     '/_next/',
     '/favicon.ico',
   ];
