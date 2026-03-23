@@ -27,9 +27,27 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const body = await request.json();
 
+  if (!body.name || !body.tenant_id) {
+    return Response.json(
+      { error: 'name and tenant_id are required' },
+      { status: 400 },
+    );
+  }
+
+  // Strip any unknown fields that could cause Supabase errors
+  const allowed = [
+    'tenant_id', 'name', 'role', 'father_name', 'dob', 'phone',
+    'aadhar', 'license_no', 'license_expiry', 'police_verification',
+    'salary', 'assigned_bus_id', 'status', 'custom_fields',
+  ];
+  const clean: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (body[key] !== undefined) clean[key] = body[key];
+  }
+
   const { data, error } = await supabase
     .from('staff')
-    .insert(body)
+    .insert(clean)
     .select()
     .single();
 

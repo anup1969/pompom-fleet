@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/Modal';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -25,6 +25,37 @@ function getInitials(name: string): string {
 
 export default function StaffProfileModal({ isOpen, onClose, staff, onEdit }: StaffProfileModalProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('profile');
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+
+  const fetchDocuments = useCallback(async () => {
+    if (!staff?.id || !staff?.tenant_id) return;
+    setDocsLoading(true);
+    try {
+      const res = await fetch(`/api/documents?tenant_id=${staff.tenant_id}&owner_type=staff&owner_id=${staff.id}`);
+      if (res.ok) {
+        setDocuments(await res.json());
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDocsLoading(false);
+    }
+  }, [staff?.id, staff?.tenant_id]);
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'documents') {
+      fetchDocuments();
+    }
+  }, [isOpen, activeTab, fetchDocuments]);
+
+  // Reset tab when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab('profile');
+      setDocuments([]);
+    }
+  }, [isOpen]);
 
   if (!staff) return null;
 
@@ -92,7 +123,7 @@ export default function StaffProfileModal({ isOpen, onClose, staff, onEdit }: St
               ['License Expiry', staff.license_expiry || '\u2014'],
               ['Salary', staff.salary ? `\u20B9${Number(staff.salary).toLocaleString('en-IN')}` : '\u2014'],
               ['Police Verification', staff.police_verification || '\u2014'],
-              ['Assigned Bus', staff.assigned_bus || '\u2014'],
+              ['Status', staff.status || 'Active'],
             ] as [string, string][]).map(([label, value]) => (
               <div key={label}>
                 <div style={{ fontSize: 11, color: 'var(--bodytext)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>
@@ -107,8 +138,49 @@ export default function StaffProfileModal({ isOpen, onClose, staff, onEdit }: St
 
       {/* Documents Tab */}
       {activeTab === 'documents' && (
-        <div style={{ padding: 20, textAlign: 'center', color: 'var(--bodytext)' }}>
-          No documents uploaded yet.
+        <div>
+          {docsLoading ? (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--bodytext)' }}>
+              Loading documents...
+            </div>
+          ) : documents.length === 0 ? (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--bodytext)' }}>
+              No documents uploaded yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize' }}>
+                      {(doc.doc_type || 'document').replace(/_/g, ' ')}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 2 }}>
+                      Uploaded {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('en-IN') : '\u2014'}
+                    </div>
+                  </div>
+                  <a
+                    href={doc.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline btn-sm"
+                  >
+                    View
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

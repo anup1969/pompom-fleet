@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/Modal';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -11,6 +11,11 @@ interface AddStaffModalProps {
   onSaved?: () => void;
   tenantId?: string;
   editData?: any;
+}
+
+interface BusOption {
+  id: string;
+  vehicle_no: string;
 }
 
 export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, editData }: AddStaffModalProps) {
@@ -24,8 +29,36 @@ export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, edit
   const [licenseExpiry, setLicenseExpiry] = useState('');
   const [salary, setSalary] = useState('');
   const [policeVerification, setPoliceVerification] = useState('');
-  const [assignedBus, setAssignedBus] = useState('');
+  const [assignedBusId, setAssignedBusId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  // Bus options for dropdown
+  const [buses, setBuses] = useState<BusOption[]>([]);
+
+  // File upload state
+  const [aadharFile, setAadharFile] = useState<File | null>(null);
+  const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const aadharInputRef = useRef<HTMLInputElement>(null);
+  const licenseInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch buses for dropdown
+  const fetchBuses = useCallback(async () => {
+    if (!tenantId) return;
+    try {
+      const res = await fetch(`/api/buses?tenant_id=${tenantId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setBuses(data.map((b: any) => ({ id: b.id, vehicle_no: b.vehicle_no })));
+      }
+    } catch {
+      // ignore
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (isOpen) fetchBuses();
+  }, [isOpen, fetchBuses]);
 
   // Populate form when editing
   useEffect(() => {
@@ -40,7 +73,7 @@ export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, edit
       setLicenseExpiry(editData.license_expiry || '');
       setSalary(editData.salary?.toString() || '');
       setPoliceVerification(editData.police_verification || '');
-      setAssignedBus(editData.assigned_bus || '');
+      setAssignedBusId(editData.assigned_bus_id || '');
     } else {
       setName('');
       setFatherName('');
@@ -52,13 +85,36 @@ export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, edit
       setLicenseExpiry('');
       setSalary('');
       setPoliceVerification('');
-      setAssignedBus('');
+      setAssignedBusId('');
     }
+    setAadharFile(null);
+    setLicenseFile(null);
+    setError('');
   }, [editData, isOpen]);
 
+  async function uploadDocument(file: File, staffId: string, docType: string) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('owner_type', 'staff');
+    fd.append('owner_id', staffId);
+    fd.append('doc_type', docType);
+    fd.append('tenant_id', tenantId || '');
+
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(err.error || 'Upload failed');
+    }
+    return res.json();
+  }
+
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setError('Name is required');
+      return;
+    }
     setSaving(true);
+    setError('');
     try {
       const payload: any = {
         name: name.trim(),
@@ -71,30 +127,64 @@ export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, edit
         license_expiry: licenseExpiry || null,
         salary: salary ? Number(salary) : null,
         police_verification: policeVerification || null,
-        assigned_bus: assignedBus || null,
+        assigned_bus_id: assignedBusId || null,
       };
 
+      let staffId = editData?.id;
+
       if (editData?.id) {
-        await fetch(`/api/staff/${editData.id}`, {
+        const res = await fetch(`/api/staff/${editData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Failed to update staff' }));
+          throw new Error(err.error || 'Failed to update staff');
+        }
       } else {
         payload.tenant_id = tenantId;
-        await fetch('/api/staff', {
+        const res = await fetch('/api/staff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Failed to save staff' }));
+          throw new Error(err.error || 'Failed to save staff');
+        }
+        const created = await res.json();
+        staffId = created.id;
       }
+
+      // Upload documents if selected
+      if (staffId) {
+        if (aadharFile) {
+          await uploadDocument(aadharFile, staffId, 'aadhar');
+        }
+        if (licenseFile) {
+          await uploadDocument(licenseFile, staffId, 'license');
+        }
+      }
+
       onSaved?.();
       onClose();
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleFileSelect(type: 'aadhar' | 'license', file: File | undefined) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File exceeds 5 MB limit');
+      return;
+    }
+    if (type === 'aadhar') setAadharFile(file);
+    else setLicenseFile(file);
+    setError('');
   }
 
   return (
@@ -113,6 +203,12 @@ export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, edit
         </>
       }
     >
+      {error && (
+        <div style={{ background: 'var(--lighterror)', color: 'var(--error)', padding: '10px 14px', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
       <div className="form-row">
         <div className="form-group">
           <label className="form-label">Name</label>
@@ -225,33 +321,83 @@ export default function AddStaffModal({ isOpen, onClose, onSaved, tenantId, edit
 
       <div className="form-group">
         <label className="form-label">Assigned Bus</label>
-        <input
-          className="form-input"
-          placeholder="e.g. GJ-01-TX-5501"
-          value={assignedBus}
-          onChange={(e) => setAssignedBus(e.target.value)}
-        />
+        <select
+          className="form-select"
+          value={assignedBusId}
+          onChange={(e) => setAssignedBusId(e.target.value)}
+        >
+          <option value="">None</option>
+          {buses.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.vehicle_no}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="form-row">
         <div className="form-group">
           <label className="form-label">Aadhar Upload</label>
-          <div className="file-upload">
-            <div style={{ fontSize: 24, marginBottom: 4 }}>&#128196;</div>
-            <div>Click to upload Aadhar</div>
-            <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
-              PDF, JPG, PNG (max 5MB)
-            </div>
+          <input
+            ref={aadharInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            style={{ display: 'none' }}
+            onChange={(e) => handleFileSelect('aadhar', e.target.files?.[0])}
+          />
+          <div
+            className="file-upload"
+            onClick={() => aadharInputRef.current?.click()}
+          >
+            {aadharFile ? (
+              <>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>&#9989;</div>
+                <div style={{ fontWeight: 500 }}>{aadharFile.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
+                  {(aadharFile.size / 1024).toFixed(0)} KB — click to change
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>&#128196;</div>
+                <div>Click to upload Aadhar</div>
+                <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
+                  PDF, JPG, PNG (max 5MB)
+                </div>
+              </>
+            )}
           </div>
         </div>
         <div className="form-group">
           <label className="form-label">License Upload</label>
-          <div className="file-upload">
-            <div style={{ fontSize: 24, marginBottom: 4 }}>&#128196;</div>
-            <div>Click to upload License</div>
-            <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
-              PDF, JPG, PNG (max 5MB)
-            </div>
+          <input
+            ref={licenseInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            style={{ display: 'none' }}
+            onChange={(e) => handleFileSelect('license', e.target.files?.[0])}
+          />
+          <div
+            className="file-upload"
+            onClick={() => licenseInputRef.current?.click()}
+          >
+            {licenseFile ? (
+              <>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>&#9989;</div>
+                <div style={{ fontWeight: 500 }}>{licenseFile.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
+                  {(licenseFile.size / 1024).toFixed(0)} KB — click to change
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>&#128196;</div>
+                <div>Click to upload License</div>
+                <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
+                  PDF, JPG, PNG (max 5MB)
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

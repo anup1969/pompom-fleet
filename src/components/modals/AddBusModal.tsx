@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/Modal';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -31,6 +31,11 @@ export default function AddBusModal({ isOpen, onClose, onSaved, tenantId, editDa
   const [nextServiceKm, setNextServiceKm] = useState('');
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  // File upload state
+  const [rcFile, setRcFile] = useState<File | null>(null);
+  const rcInputRef = useRef<HTMLInputElement>(null);
 
   // Populate form when editing
   useEffect(() => {
@@ -57,6 +62,8 @@ export default function AddBusModal({ isOpen, onClose, onSaved, tenantId, editDa
       setNextServiceKm('');
       setCustomFields([]);
     }
+    setRcFile(null);
+    setError('');
   }, [editData, isOpen]);
 
   function addCustomField() {
@@ -71,9 +78,29 @@ export default function AddBusModal({ isOpen, onClose, onSaved, tenantId, editDa
     setCustomFields(customFields.map((f) => (f.id === id ? { ...f, [key]: val } : f)));
   }
 
+  async function uploadDocument(file: File, busId: string, docType: string) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('owner_type', 'bus');
+    fd.append('owner_id', busId);
+    fd.append('doc_type', docType);
+    fd.append('tenant_id', tenantId || '');
+
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(err.error || 'Upload failed');
+    }
+    return res.json();
+  }
+
   async function handleSave() {
-    if (!vehicleNo.trim()) return;
+    if (!vehicleNo.trim()) {
+      setError('Vehicle number is required');
+      return;
+    }
     setSaving(true);
+    setError('');
     try {
       const payload: any = {
         vehicle_no: vehicleNo.trim(),
@@ -87,29 +114,57 @@ export default function AddBusModal({ isOpen, onClose, onSaved, tenantId, editDa
         next_service_km: nextServiceKm ? Number(nextServiceKm) : null,
       };
 
+      let busId = editData?.id;
+
       if (editData?.id) {
         // Update existing
-        await fetch(`/api/buses/${editData.id}`, {
+        const res = await fetch(`/api/buses/${editData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Failed to update bus' }));
+          throw new Error(err.error || 'Failed to update bus');
+        }
       } else {
         // Create new
         payload.tenant_id = tenantId;
-        await fetch('/api/buses', {
+        const res = await fetch('/api/buses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Failed to save bus' }));
+          throw new Error(err.error || 'Failed to save bus');
+        }
+        const created = await res.json();
+        busId = created.id;
       }
+
+      // Upload RC book if selected
+      if (busId && rcFile) {
+        await uploadDocument(rcFile, busId, 'rc_book');
+      }
+
       onSaved?.();
       onClose();
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleRcFileSelect(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File exceeds 5 MB limit');
+      return;
+    }
+    setRcFile(file);
+    setError('');
   }
 
   return (
@@ -128,6 +183,12 @@ export default function AddBusModal({ isOpen, onClose, onSaved, tenantId, editDa
         </>
       }
     >
+      {error && (
+        <div style={{ background: 'var(--lighterror)', color: 'var(--error)', padding: '10px 14px', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
       <div className="form-row">
         <div className="form-group">
           <label className="form-label">Vehicle Number</label>
@@ -229,12 +290,34 @@ export default function AddBusModal({ isOpen, onClose, onSaved, tenantId, editDa
 
       <div className="form-group">
         <label className="form-label">RC Book Upload</label>
-        <div className="file-upload">
-          <div style={{ fontSize: 24, marginBottom: 4 }}>&#128196;</div>
-          <div>Click to upload RC Book</div>
-          <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
-            PDF, JPG, PNG (max 5MB)
-          </div>
+        <input
+          ref={rcInputRef}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          style={{ display: 'none' }}
+          onChange={(e) => handleRcFileSelect(e.target.files?.[0])}
+        />
+        <div
+          className="file-upload"
+          onClick={() => rcInputRef.current?.click()}
+        >
+          {rcFile ? (
+            <>
+              <div style={{ fontSize: 24, marginBottom: 4 }}>&#9989;</div>
+              <div style={{ fontWeight: 500 }}>{rcFile.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
+                {(rcFile.size / 1024).toFixed(0)} KB — click to change
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 24, marginBottom: 4 }}>&#128196;</div>
+              <div>Click to upload RC Book</div>
+              <div style={{ fontSize: 11, color: 'var(--bodytext)', marginTop: 4 }}>
+                PDF, JPG, PNG (max 5MB)
+              </div>
+            </>
+          )}
         </div>
       </div>
 
