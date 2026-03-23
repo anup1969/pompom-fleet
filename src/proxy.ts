@@ -15,6 +15,7 @@ export function proxy(request: NextRequest) {
     '/login',
     '/api/auth/',
     '/api/seed',
+    '/api/debug-env',
     '/_next/',
     '/favicon.ico',
   ];
