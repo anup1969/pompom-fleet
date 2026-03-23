@@ -15,6 +15,7 @@ const pageTitles: Record<string, string> = {
   "/directory": "Phone Directory",
   "/documents": "Document Expiry",
   "/insurance": "Insurance",
+  "/masters": "Masters",
 };
 
 interface HeaderProps {
@@ -52,6 +53,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
   const initials = user ? getInitials(user.name) : "??";
 
+  // Check if user came via PomPom token
+  const isFromPomPom =
+    typeof document !== "undefined" &&
+    document.cookie.includes("fleet_auth_source=pompom");
+
   return (
     <header className="header">
       <div className="header-left">
@@ -61,6 +67,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
         <div className="header-title">{pageTitle}</div>
       </div>
       <div className="header-right">
+        {isFromPomPom && (
+          <a
+            href="https://login.pompombus.com"
+            className="btn btn-outline btn-sm"
+            style={{ gap: "6px", textDecoration: "none" }}
+          >
+            &#8592; Back to PomPom
+          </a>
+        )}
         {tenant && (
           <span
             style={{

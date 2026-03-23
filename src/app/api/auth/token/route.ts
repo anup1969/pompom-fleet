@@ -54,6 +54,15 @@ export async function GET(request: NextRequest) {
       maxAge: 24 * 60 * 60, // 24 hours
     });
 
+    // Mark that this user came via PomPom token (readable by client)
+    cookieStore.set('fleet_auth_source', 'pompom', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60,
+    });
+
     // 6. Redirect to dashboard
     const dashboardUrl = new URL('/', request.url);
     return Response.redirect(dashboardUrl.toString());
