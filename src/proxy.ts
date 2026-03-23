@@ -24,6 +24,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // If ?token= is present on ANY URL, redirect to auth endpoint
+  const jwtToken = request.nextUrl.searchParams.get('token');
+  if (jwtToken) {
+    const authUrl = new URL('/api/auth/token', request.url);
+    authUrl.searchParams.set('token', jwtToken);
+    return NextResponse.redirect(authUrl);
+  }
+
   // Check for session cookie
   const sessionToken = request.cookies.get('fleet_session')?.value;
 
