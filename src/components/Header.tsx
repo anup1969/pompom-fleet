@@ -54,9 +54,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const initials = user ? getInitials(user.name) : "??";
 
   // Check if user came via PomPom token
-  const isFromPomPom =
-    typeof document !== "undefined" &&
-    document.cookie.includes("fleet_auth_source=pompom");
+  const [isFromPomPom, setIsFromPomPom] = useState(false);
+  useEffect(() => {
+    setIsFromPomPom(document.cookie.includes("fleet_auth_source=pompom"));
+  }, []);
 
   return (
     <header className="header">
