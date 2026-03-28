@@ -16,6 +16,7 @@ const pageTitles: Record<string, string> = {
   "/documents": "Document Expiry",
   "/insurance": "Insurance",
   "/masters": "Masters",
+  "/admissions": "Admissions",
 };
 
 interface HeaderProps {

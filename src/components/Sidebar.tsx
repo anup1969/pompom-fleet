@@ -16,6 +16,7 @@ const mainNav: NavItem[] = [
   { label: "Staff", href: "/staff", icon: "\uD83D\uDC64" },
   { label: "Expenses", href: "/expenses", icon: "\u20B9" },
   { label: "Attendance", href: "/attendance", icon: "\u2611" },
+  { label: "Admissions", href: "/admissions", icon: "\uD83C\uDF93" },
 ];
 
 const managementNav: NavItem[] = [
