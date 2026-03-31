@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession } from '@/lib/session-context';
 import Modal from '@/components/Modal';
+import { downloadExcel, parseExcelUpload, downloadTemplate } from '@/lib/excel';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -830,6 +831,146 @@ export default function AdmissionsPage() {
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
 
+  /* ── Excel Download ── */
+  function handleDownloadExcel() {
+    const rows = filteredAdmissions.map((a) => ({
+      'GRN': a.grn || '',
+      'Student Name': a.student_name,
+      'Father Name': a.father_name,
+      'Surname': a.surname || '',
+      'Gender': a.gender || '',
+      'Class': a.class_grade || '',
+      'Section': a.section || '',
+      'DOB': a.dob || '',
+      'Primary Mobile': a.primary_mobile || '',
+      'Secondary Mobile': a.secondary_mobile || '',
+      'Address Line 1': a.address_line1 || '',
+      'Address Line 2': a.address_line2 || '',
+      'Area': a.area_name || '',
+      'City': a.city || '',
+      'Pickup Route': a.pickup_route_name || '',
+      'Pickup Stop': a.pickup_stop_name || '',
+      'Drop Route': a.drop_route_name || '',
+      'Drop Stop': a.drop_stop_name || '',
+    }));
+    const today = new Date().toISOString().slice(0, 10);
+    downloadExcel(rows, `Admissions_${today}.xlsx`, 'Admissions');
+  }
+
+  /* ── Excel Import Modal ── */
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; errors: number; messages: string[] } | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const TEMPLATE_COLUMNS = [
+    'GRN', 'Student Name', 'Father Name', 'Surname', 'Gender',
+    'Class', 'Section', 'DOB', 'Primary Mobile', 'Secondary Mobile',
+    'Address Line 1', 'Address Line 2', 'Area', 'City',
+  ];
+
+  function handleDownloadTemplate() {
+    downloadTemplate(TEMPLATE_COLUMNS, 'Admission_Import_Template.xlsx', 'Template');
+  }
+
+  async function handleFileSelect(file: File | null) {
+    setImportFile(file);
+    setImportPreview([]);
+    setImportResult(null);
+    if (!file) return;
+    setImportParsing(true);
+    try {
+      const rows = await parseExcelUpload(file);
+      setImportPreview(rows);
+    } catch {
+      setImportPreview([]);
+    } finally {
+      setImportParsing(false);
+    }
+  }
+
+  async function handleImport() {
+    if (!tenant?.id || importPreview.length === 0) return;
+    setImporting(true);
+    const messages: string[] = [];
+    let success = 0;
+    let errors = 0;
+
+    for (let i = 0; i < importPreview.length; i++) {
+      const row = importPreview[i];
+      const studentName = (row['Student Name'] || '').toString().trim();
+      const fatherName = (row['Father Name'] || '').toString().trim();
+
+      if (!studentName || !fatherName) {
+        errors++;
+        messages.push(`Row ${i + 1}: Missing Student Name or Father Name -- skipped`);
+        continue;
+      }
+
+      const payload: any = {
+        tenant_id: tenant.id,
+        student_name: studentName,
+        father_name: fatherName,
+        surname: (row['Surname'] || '').toString().trim() || null,
+        gender: (row['Gender'] || '').toString().trim() || null,
+        class_grade: (row['Class'] || '').toString().trim() || null,
+        section: (row['Section'] || '').toString().trim() || null,
+        grn: (row['GRN'] || '').toString().trim() || null,
+        dob: (row['DOB'] || '').toString().trim() || null,
+        primary_mobile: (row['Primary Mobile'] || '').toString().trim() || null,
+        secondary_mobile: (row['Secondary Mobile'] || '').toString().trim() || null,
+        address_line1: (row['Address Line 1'] || '').toString().trim() || null,
+        address_line2: (row['Address Line 2'] || '').toString().trim() || null,
+        area_name: (row['Area'] || '').toString().trim() || null,
+        city: (row['City'] || '').toString().trim() || null,
+      };
+
+      // Try to match area_id by name
+      if (payload.area_name) {
+        const matchedArea = areas.find(
+          (a) => a.name.toLowerCase() === payload.area_name.toLowerCase()
+        );
+        if (matchedArea) {
+          payload.area_id = matchedArea.id;
+        }
+      }
+
+      try {
+        const res = await fetch('/api/admissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          success++;
+        } else {
+          errors++;
+          const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+          messages.push(`Row ${i + 1} (${studentName}): ${err.error || 'Failed'}`);
+        }
+      } catch {
+        errors++;
+        messages.push(`Row ${i + 1} (${studentName}): Network error`);
+      }
+    }
+
+    setImportResult({ success, errors, messages });
+    setImporting(false);
+    if (success > 0) {
+      fetchAdmissions();
+    }
+  }
+
+  function openImportModal() {
+    setImportFile(null);
+    setImportPreview([]);
+    setImportResult(null);
+    setImportModalOpen(true);
+  }
+
   /* ── Loading state ── */
   if (sessionLoading) {
     return (
@@ -868,6 +1009,8 @@ export default function AdmissionsPage() {
           <div className="card-header">
             <h3>Student Admissions</h3>
             <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-outline btn-sm" onClick={handleDownloadExcel}>Download Excel</button>
+              <button className="btn btn-outline btn-sm" onClick={openImportModal}>Import Excel</button>
               <button className="btn btn-outline btn-sm" onClick={openParentLinkModal}>Share Parent Form</button>
               <button className="btn btn-primary btn-sm" onClick={() => openAdmissionModal()}>+ Add Admission</button>
             </div>
@@ -1911,6 +2054,140 @@ export default function AdmissionsPage() {
             Share via WhatsApp
           </button>
         </div>
+      </Modal>
+
+      {/* ======== MODAL: Import Excel ======== */}
+      <Modal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Admissions from Excel"
+        wide
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-outline" onClick={() => setImportModalOpen(false)}>Close</button>
+            {importPreview.length > 0 && !importResult && (
+              <button
+                className="btn btn-primary"
+                onClick={handleImport}
+                disabled={importing}
+              >
+                {importing ? 'Importing...' : `Import ${importPreview.length} Record${importPreview.length !== 1 ? 's' : ''}`}
+              </button>
+            )}
+          </div>
+        }
+      >
+        {/* Step 1: Download template */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--bodytext)', marginBottom: 10 }}>
+            Step 1: Download the template with the correct column headers, fill in your data, then upload it below.
+          </p>
+          <button className="btn btn-outline btn-sm" onClick={handleDownloadTemplate}>
+            Download Template
+          </button>
+        </div>
+
+        {/* Step 2: Upload file */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--bodytext)', marginBottom: 10 }}>
+            Step 2: Upload your filled .xlsx file.
+          </p>
+          <div
+            className="file-upload"
+            onClick={() => importFileRef.current?.click()}
+          >
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
+            />
+            <div>
+              {importFile ? (
+                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{importFile.name}</span>
+              ) : (
+                <span>Click to select .xlsx file</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Parsing indicator */}
+        {importParsing && (
+          <div style={{ padding: 16, textAlign: 'center', color: 'var(--bodytext)' }}>
+            Parsing file...
+          </div>
+        )}
+
+        {/* Step 3: Preview */}
+        {importPreview.length > 0 && !importResult && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: 'var(--bodytext)', marginBottom: 10 }}>
+              Step 3: Preview ({importPreview.length} row{importPreview.length !== 1 ? 's' : ''} found). Click &quot;Import&quot; to add them.
+            </p>
+            <div className="table-wrap" style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Student Name</th>
+                    <th>Father Name</th>
+                    <th>Class</th>
+                    <th>Mobile</th>
+                    <th>Area</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreview.slice(0, 50).map((row, idx) => (
+                    <tr key={idx}>
+                      <td>{idx + 1}</td>
+                      <td>{row['Student Name'] || '--'}</td>
+                      <td>{row['Father Name'] || '--'}</td>
+                      <td>{row['Class'] || '--'}</td>
+                      <td>{row['Primary Mobile'] || '--'}</td>
+                      <td>{row['Area'] || '--'}</td>
+                    </tr>
+                  ))}
+                  {importPreview.length > 50 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--bodytext)', fontStyle: 'italic' }}>
+                        ...and {importPreview.length - 50} more rows
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Import result */}
+        {importResult && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{
+              padding: '12px 16px',
+              borderRadius: 'var(--radius-sm)',
+              background: importResult.errors === 0 ? 'var(--lightsuccess)' : 'var(--lightwarning)',
+              marginBottom: 12,
+            }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                Import Complete
+              </div>
+              <div style={{ fontSize: 13 }}>
+                {importResult.success} imported successfully
+                {importResult.errors > 0 && `, ${importResult.errors} failed`}
+              </div>
+            </div>
+            {importResult.messages.length > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--error)', maxHeight: 150, overflowY: 'auto' }}>
+                {importResult.messages.map((msg, i) => (
+                  <div key={i} style={{ marginBottom: 4 }}>{msg}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </>
   );

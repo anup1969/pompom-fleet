@@ -25,6 +25,8 @@ export function proxy(request: NextRequest) {
     '/api/areas',
     '/api/admissions',
     '/api/upload',
+    '/admin',
+    '/api/admin',
   ];
 
   const isPublic = publicPaths.some((path) => pathname.startsWith(path));
