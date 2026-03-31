@@ -5,7 +5,10 @@ import { downloadExcel } from '@/lib/excel';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const ADMIN_KEY = 'pompom2026';
+const ADMIN_CREDENTIALS = [
+  { email: 'admin@pompom.com', password: 'pompom2026' },
+  { email: 'piush@pompom.com', password: 'pompom2026' },
+];
 
 interface Tenant {
   id: string;
@@ -53,6 +56,9 @@ function fmtDate(d: string | null): string {
 export default function AdminAdmissionsPage() {
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   // Data
   const [admissions, setAdmissions] = useState<AdminAdmission[]>([]);
@@ -67,22 +73,35 @@ export default function AdminAdmissionsPage() {
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
 
-  // Check authorization via URL key param
+  // Check if already logged in (session storage)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const key = params.get('key');
-    if (key === ADMIN_KEY) {
+    const saved = sessionStorage.getItem('pompom_admin_auth');
+    if (saved === 'true') {
       setAuthorized(true);
     }
     setChecking(false);
   }, []);
+
+  function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoginError('');
+    const match = ADMIN_CREDENTIALS.find(
+      c => c.email === loginEmail.trim().toLowerCase() && c.password === loginPassword
+    );
+    if (match) {
+      sessionStorage.setItem('pompom_admin_auth', 'true');
+      setAuthorized(true);
+    } else {
+      setLoginError('Invalid email or password');
+    }
+  }
 
   // Fetch data
   const fetchData = useCallback(async () => {
     if (!authorized) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ key: ADMIN_KEY });
+      const params = new URLSearchParams({ key: 'pompom2026' });
       if (filterTenant) params.set('tenant_id', filterTenant);
       if (filterClass) params.set('class_grade', filterClass);
       if (filterArea) params.set('area_name', filterArea);
@@ -172,15 +191,33 @@ export default function AdminAdmissionsPage() {
   if (!authorized) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--lightgray)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="card" style={{ maxWidth: 400, textAlign: 'center' }}>
+        <div className="card" style={{ maxWidth: 420, width: '100%' }}>
           <div className="card-body" style={{ padding: 40 }}>
-            <div style={{ width: 56, height: 56, background: 'var(--accent)', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 22, fontWeight: 700, color: 'var(--dark)' }}>
-              PP
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ width: 56, height: 56, background: 'var(--accent)', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: 22, fontWeight: 700, color: 'var(--dark)' }}>
+                PP
+              </div>
+              <h2 style={{ marginBottom: 4 }}>PomPom Admin</h2>
+              <p style={{ color: 'var(--bodytext)', fontSize: 13 }}>Sign in to access the admin panel</p>
             </div>
-            <h2 style={{ marginBottom: 8 }}>Access Denied</h2>
-            <p style={{ color: 'var(--bodytext)' }}>
-              This page requires a valid admin key. Please check your URL.
-            </p>
+            {loginError && (
+              <div style={{ background: 'var(--lighterror)', color: 'var(--error)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 16, fontSize: 13, fontWeight: 500 }}>
+                {loginError}
+              </div>
+            )}
+            <form onSubmit={handleAdminLogin}>
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input className="form-input" type="email" placeholder="admin@pompom.com" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input className="form-input" type="password" placeholder="Enter password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+              </div>
+              <button className="btn btn-primary" type="submit" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
+                Sign In
+              </button>
+            </form>
           </div>
         </div>
       </div>
