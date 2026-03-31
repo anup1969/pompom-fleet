@@ -9,7 +9,7 @@ export async function GET(
   const supabase = createServiceClient();
 
   const { data, error } = await supabase
-    .from('admissions')
+    .from('classes')
     .select('*')
     .eq('id', id)
     .single();
@@ -30,8 +30,8 @@ export async function PUT(
   const body = await request.json();
 
   const { data, error } = await supabase
-    .from('admissions')
-    .update({ ...body, updated_at: new Date().toISOString() })
+    .from('classes')
+    .update(body)
     .eq('id', id)
     .select()
     .single();
@@ -51,7 +51,7 @@ export async function DELETE(
   const supabase = createServiceClient();
 
   const { error } = await supabase
-    .from('admissions')
+    .from('classes')
     .delete()
     .eq('id', id);
 

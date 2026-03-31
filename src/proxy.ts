@@ -18,6 +18,13 @@ export function proxy(request: NextRequest) {
     '/api/debug-env',
     '/_next/',
     '/favicon.ico',
+    '/parent-form',
+    '/api/parent-link',
+    '/api/classes',
+    '/api/sections',
+    '/api/areas',
+    '/api/admissions',
+    '/api/upload',
   ];
 
   const isPublic = publicPaths.some((path) => pathname.startsWith(path));

@@ -10,32 +10,24 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await supabase
-    .from('routes')
-    .select('*, stops(id)')
+    .from('classes')
+    .select('*')
     .eq('tenant_id', tenantId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  // Flatten stops count, include new fields
-  const result = (data ?? []).map((r: Record<string, unknown>) => ({
-    ...r,
-    stops_count: Array.isArray(r.stops) ? r.stops.length : 0,
-    stops: undefined,
-  }));
-
-  return Response.json(result);
+  return Response.json(data ?? []);
 }
 
 export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const body = await request.json();
 
-  // Accept route_type, departure_time, arrival_time along with existing fields
   const { data, error } = await supabase
-    .from('routes')
+    .from('classes')
     .insert(body)
     .select()
     .single();

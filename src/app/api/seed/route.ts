@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
 
   try {
-    // ─── 1. Create tenant ───────────────────────────────────
+    // --- 1. Create tenant ---
     const { data: tenant, error: tenantErr } = await supabase
       .from('tenants')
       .upsert(
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ─── 2. Create admin user ───────────────────────────────
+    // --- 2. Create admin user ---
     const passwordHash = await hashPassword('admin123');
 
     const { data: user, error: userErr } = await supabase
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ─── 3. Seed master data ────────────────────────────────
+    // --- 3. Seed master data ---
     const tid = tenant.id;
 
     // Expense Heads
@@ -124,6 +124,37 @@ export async function GET(req: NextRequest) {
         );
     }
 
+    // Classes
+    const classNames = [
+      'Nursery', 'LKG', 'UKG',
+      '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
+    ];
+    for (const name of classNames) {
+      await supabase
+        .from('classes')
+        .upsert({ tenant_id: tid, name }, { onConflict: 'tenant_id,name' });
+    }
+
+    // Sections
+    const sectionNames = ['A', 'B', 'C', 'D'];
+    for (const name of sectionNames) {
+      await supabase
+        .from('sections')
+        .upsert({ tenant_id: tid, name }, { onConflict: 'tenant_id,name' });
+    }
+
+    // Areas
+    const areaNames = [
+      'Satellite', 'Vastrapur', 'Bodakdev', 'Thaltej', 'SG Highway',
+      'Prahlad Nagar', 'Jodhpur', 'Navrangpura', 'Paldi', 'Maninagar',
+      'Bopal', 'South Bopal', 'Ghuma', 'Shilaj', 'Science City',
+    ];
+    for (const name of areaNames) {
+      await supabase
+        .from('areas')
+        .upsert({ tenant_id: tid, name }, { onConflict: 'tenant_id,name' });
+    }
+
     return Response.json({
       message: 'Seed complete',
       tenant: { id: tenant.id, client_id: tenant.client_id, client_name: tenant.client_name },
@@ -135,6 +166,9 @@ export async function GET(req: NextRequest) {
         staff_roles: staffRoles.length,
         vendor_categories: vendorCategories.length,
         attendance_rules: rules.length,
+        classes: classNames.length,
+        sections: sectionNames.length,
+        areas: areaNames.length,
       },
     });
   } catch (err) {

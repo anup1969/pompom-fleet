@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('stops')
-    .select('*, routes(name)')
+    .select('*, stop_areas(id, area_id, areas(id, name))')
     .eq('tenant_id', tenantId)
-    .order('sequence_order', { ascending: true });
+    .order('name', { ascending: true });
 
   if (routeId) {
     query = query.eq('route_id', routeId);
@@ -26,12 +26,24 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  // Flatten route name
-  const result = (data ?? []).map((s: Record<string, unknown>) => ({
-    ...s,
-    route_name: s.routes && typeof s.routes === 'object' ? (s.routes as Record<string, unknown>).name : null,
-    routes: undefined,
-  }));
+  // Flatten areas for each stop
+  const result = (data ?? []).map((s: Record<string, unknown>) => {
+    const stopAreas = Array.isArray(s.stop_areas) ? s.stop_areas : [];
+    const areas = stopAreas.map((sa: Record<string, unknown>) => {
+      const areaObj = sa.areas as Record<string, unknown> | null;
+      return {
+        id: sa.area_id,
+        name: areaObj ? areaObj.name : null,
+        stop_area_id: sa.id,
+      };
+    });
+    return {
+      ...s,
+      yearly_fee: s.yearly_fee ?? null,
+      areas,
+      stop_areas: undefined,
+    };
+  });
 
   return Response.json(result);
 }
@@ -40,6 +52,7 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceClient();
   const body = await request.json();
 
+  // route_id is now optional — stops are independent
   const { data, error } = await supabase
     .from('stops')
     .insert(body)
