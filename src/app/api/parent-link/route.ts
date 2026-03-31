@@ -1,10 +1,10 @@
 import { type NextRequest } from 'next/server';
+import { createServiceClient } from '@/lib/supabase';
 
 /**
  * GET /api/parent-link?tenant_id=xxx
  *
- * Returns the public parent admission form URL for the given tenant.
- * The URL is deterministic — based on tenant_id, no token table needed.
+ * Returns the public parent admission form URL and tenant name.
  */
 export async function GET(request: NextRequest) {
   const tenantId = request.nextUrl.searchParams.get('tenant_id');
@@ -13,9 +13,18 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: 'tenant_id is required' }, { status: 400 });
   }
 
-  // Build the public URL from the request origin
+  const supabase = createServiceClient();
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('client_name')
+    .eq('id', tenantId)
+    .single();
+
   const origin = request.nextUrl.origin;
   const url = `${origin}/parent-form?t=${tenantId}`;
 
-  return Response.json({ url });
+  return Response.json({
+    url,
+    tenant_name: tenant?.client_name || '',
+  });
 }

@@ -24,6 +24,7 @@ function ParentFormInner() {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('t') || '';
 
+  const [tenantName, setTenantName] = useState('');
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [areas, setAreas] = useState<AreaItem[]>([]);
@@ -54,6 +55,11 @@ function ParentFormInner() {
   useEffect(() => {
     if (!tenantId) return;
     setLoading(true);
+    // Fetch tenant name
+    fetch(`/api/parent-link?tenant_id=${tenantId}`).then(r => r.json()).then(d => {
+      if (d.tenant_name) setTenantName(d.tenant_name);
+    }).catch(() => {});
+
     Promise.all([
       fetch(`/api/classes?tenant_id=${tenantId}`).then((r) => r.json()),
       fetch(`/api/sections?tenant_id=${tenantId}`).then((r) => r.json()),
@@ -146,8 +152,8 @@ function ParentFormInner() {
           <div style={styles.headerBar}>
             <div style={styles.logo}>P</div>
             <div>
-              <div style={styles.brandName}>PomPom Fleet</div>
-              <div style={styles.brandSub}>Transport Management</div>
+              <div style={styles.brandName}>{tenantName || 'PomPom Fleet'}</div>
+              <div style={styles.brandSub}>Transport Admission</div>
             </div>
           </div>
           <div style={{ padding: 40, textAlign: 'center', color: '#98A4AE' }}>
@@ -165,8 +171,8 @@ function ParentFormInner() {
           <div style={styles.headerBar}>
             <div style={styles.logo}>P</div>
             <div>
-              <div style={styles.brandName}>PomPom Fleet</div>
-              <div style={styles.brandSub}>Transport Management</div>
+              <div style={styles.brandName}>{tenantName || 'PomPom Fleet'}</div>
+              <div style={styles.brandSub}>Transport Admission</div>
             </div>
           </div>
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -189,7 +195,7 @@ function ParentFormInner() {
         <div style={styles.headerBar}>
           <div style={styles.logo}>P</div>
           <div>
-            <div style={styles.brandName}>PomPom Fleet</div>
+            <div style={styles.brandName}>{tenantName || 'PomPom Fleet'}</div>
             <div style={styles.brandSub}>Student Transport Admission Form</div>
           </div>
         </div>
@@ -404,7 +410,7 @@ function ParentFormInner() {
       </div>
 
       <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#98A4AE' }}>
-        Powered by PomPom Fleet Manager
+        Powered by <a href="https://pompombus.com" target="_blank" rel="noopener noreferrer" style={{ color: '#F59E0B', fontWeight: 600, textDecoration: 'none' }}>POMPOMBUS.COM</a>
       </div>
     </div>
   );
